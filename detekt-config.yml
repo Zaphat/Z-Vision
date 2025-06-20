@@ -1,0 +1,12 @@
+# Detekt configuration file
+autoCorrect: true
+failFast: false
+
+rules:
+  comments:
+    UndocumentedPublicClass:
+      active: true
+  complexity:
+    LongMethod:
+      active: true
+      threshold: 30
