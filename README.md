@@ -33,3 +33,4 @@
 3. Verify `adb`:
    ```bash
    adb devices
+   ```
