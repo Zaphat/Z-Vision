@@ -52,7 +52,15 @@ android {
 }
 
 dependencies {
+<<<<<<< Updated upstream
     implementation(libs.androidx.navigation.compose)
+||||||| Stash base
+
+=======
+
+    implementation(libs.zxing.core)
+    implementation(libs.zxing.android.embedded)
+>>>>>>> Stashed changes
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.datastore)
     implementation(libs.androidx.lifecycle.runtime.ktx)
