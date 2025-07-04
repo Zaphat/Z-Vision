@@ -1,11 +1,7 @@
 [versions]
 agp = "8.10.1"
-<<<<<<< Updated upstream
 datastore = "1.1.7"
-||||||| Stash base
-=======
 zxingCore = "3.5.3"
->>>>>>> Stashed changes
 kotlin = "1.9.0"
 coreKtx = "1.16.0"
 junit = "4.13.2"
@@ -15,22 +11,14 @@ lifecycleRuntimeKtx = "2.9.1"
 activityCompose = "1.10.1"
 composeBom = "2025.06.00"
 detekt = "1.23.0" # Add Detekt version
-<<<<<<< Updated upstream
 navigationCompose = "2.9.0"
-||||||| Stash base
-=======
 zxingAndroidEmbedded = "4.3.0"
->>>>>>> Stashed changes
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-<<<<<<< Updated upstream
 androidx-datastore = { module = "androidx.datastore:datastore", version.ref = "datastore" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
-||||||| Stash base
-=======
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxingCore" }
->>>>>>> Stashed changes
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
