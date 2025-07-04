@@ -1,20 +1,16 @@
 package com.zteam.zvision.qr
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.graphics.*
-import android.graphics.drawable.Drawable
-import android.net.Uri
-import android.provider.MediaStore
-import androidx.core.content.ContextCompat
+import android.graphics.Color
+import android.graphics.Bitmap
+import android.graphics.Paint
+import android.graphics.RectF
+import android.graphics.Canvas
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.WriterException
 import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
-import java.io.ByteArrayOutputStream
 import androidx.core.graphics.set
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
@@ -23,8 +19,8 @@ class QRGenerator() {
 
     companion object {
         private const val DEFAULT_SIZE = 512
-        private const val LOGO_SIZE_RATIO = 1 / 5f // Logo will be 1/5 of QR code size
-        private const val LOGO_PADDING = 8
+        private const val LOGO_SIZE_RATIO = 1 / 4f // Logo will be 1/4 of QR code size
+        private const val LOGO_PADDING = 0
     }
 
     fun generateQRCode(
@@ -42,11 +38,7 @@ class QRGenerator() {
 
             val qrCodeWriter = QRCodeWriter()
             val bitMatrix = qrCodeWriter.encode(
-                content.toEncodedString(),
-                BarcodeFormat.QR_CODE,
-                size,
-                size,
-                hints
+                content.toEncodedString(), BarcodeFormat.QR_CODE, size, size, hints
             )
 
             createBitmapFromBitMatrix(bitMatrix, foregroundColor, backgroundColor)
@@ -72,7 +64,9 @@ class QRGenerator() {
             }
 
             val qrCodeWriter = QRCodeWriter()
-            val bitMatrix = qrCodeWriter.encode(content.toEncodedString(), BarcodeFormat.QR_CODE, size, size, hints)
+            val bitMatrix = qrCodeWriter.encode(
+                content.toEncodedString(), BarcodeFormat.QR_CODE, size, size, hints
+            )
 
             val qrBitmap = createBitmapFromBitMatrix(bitMatrix, foregroundColor, backgroundColor)
             overlayLogo(qrBitmap, logoBitmap)
@@ -97,9 +91,7 @@ class QRGenerator() {
 //    }
 
     private fun createBitmapFromBitMatrix(
-        bitMatrix: BitMatrix,
-        foregroundColor: Int,
-        backgroundColor: Int
+        bitMatrix: BitMatrix, foregroundColor: Int, backgroundColor: Int
     ): Bitmap {
         val width = bitMatrix.width
         val height = bitMatrix.height
@@ -130,18 +122,18 @@ class QRGenerator() {
             val logoY = (qrHeight - logoSize) / 2f
 
             // Add white background for logo (optional, for better visibility)
-//        val backgroundPaint = Paint().apply {
-//            color = Color.WHITE
-//            isAntiAlias = true
-//        }
+            val backgroundPaint = Paint().apply {
+                color = Color.WHITE
+                isAntiAlias = true
+            }
 
-//        val backgroundRect = RectF(
-//            logoX - LOGO_PADDING,
-//            logoY - LOGO_PADDING,
-//            logoX + logoSize + LOGO_PADDING,
-//            logoY + logoSize + LOGO_PADDING
-//        )
-//        canvas.drawRoundRect(backgroundRect, 8f, 8f, backgroundPaint)
+            val backgroundRect = RectF(
+                logoX - LOGO_PADDING,
+                logoY - LOGO_PADDING,
+                logoX + logoSize + LOGO_PADDING,
+                logoY + logoSize + LOGO_PADDING
+            )
+            canvas.drawRoundRect(backgroundRect, 8f, 8f, backgroundPaint)
 
             canvas.drawBitmap(resizedLogo, logoX, logoY, null)
             combined
