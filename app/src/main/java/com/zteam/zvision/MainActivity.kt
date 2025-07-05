@@ -11,7 +11,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.compose.*
 import kotlinx.coroutines.launch
 import com.zteam.zvision.ui.screens.MainScreen
-import com.zteam.zvision.ui.screens.LanguageChoosingPage
+import com.zteam.zvision.ui.commons.LanguageChoosingPage
 import com.zteam.zvision.ui.theme.ZVisionTheme
 
 class MainActivity : ComponentActivity() {
