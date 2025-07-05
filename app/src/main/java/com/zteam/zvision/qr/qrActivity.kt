@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.zteam.zvision.R
+import android.graphics.Color
 
 @Composable
 fun QRImage(content: QRContent, modifier: Modifier = Modifier, logoPath: String? = null) {
@@ -24,9 +25,14 @@ fun QRImage(content: QRContent, modifier: Modifier = Modifier, logoPath: String?
         val options = BitmapFactory.Options()
         options.inSampleSize = 3 //save memory
         BitmapFactory.decodeResource(context.resources, R.drawable.logo_bk, options)
-                ?.let {
-                    qrGenerator.generateQRCodeWithLogo(content = content, logoBitmap = it)
-                }
+            ?.let {
+                qrGenerator.generateQRCodeWithLogo(
+                    content = content,
+                    logoBitmap = it,
+                    foregroundColor = Color.RED,
+                    backgroundColor = Color.BLUE
+                )
+            }
     }
     if (bitmap != null) Image(
         bitmap = bitmap.asImageBitmap(), contentDescription = "QR Code", modifier = modifier
