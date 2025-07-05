@@ -1,5 +1,5 @@
 // screens/LanguageChoosingPage.kt
-package com.zteam.zvision.ui.screens
+package com.zteam.zvision.ui.commons
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
