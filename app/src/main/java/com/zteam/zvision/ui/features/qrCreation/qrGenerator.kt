@@ -1,4 +1,4 @@
-package com.zteam.zvision.qr
+package com.zteam.zvision.ui.features.qrCreation
 
 import android.graphics.Color
 import android.graphics.Bitmap

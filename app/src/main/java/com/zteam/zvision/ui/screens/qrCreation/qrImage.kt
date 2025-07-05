@@ -1,5 +1,9 @@
-package com.zteam.zvision.qr
+package com.zteam.zvision.ui.screens.qrCreation
 
+import com.zteam.zvision.ui.features.qrCreation.QRContent
+import com.zteam.zvision.ui.features.qrCreation.QRGenerator
+import com.zteam.zvision.ui.features.qrCreation.TextQR
+import com.zteam.zvision.ui.features.qrCreation.UrlQR
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
