@@ -22,7 +22,7 @@ fun SettingsPopup(
         expanded = expanded,
         onDismissRequest = onDismiss,
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxWidth(0.5f)
             .background(Color.Black)
     ) {
         menuItems.forEach { (title, action) ->

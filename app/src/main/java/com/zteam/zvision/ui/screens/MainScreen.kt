@@ -43,26 +43,10 @@ fun MainScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.Start,
+                .padding(start = 8.dp, bottom = 8.dp, top = 8.dp),
+            horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box {
-                IconButton(
-                    onClick = { menuExpanded = true }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Menu,
-                        contentDescription = "QR More",
-                        tint = Color.White,
-                    )
-                }
-
-                SettingsPopup(
-                    expanded = menuExpanded,
-                    onDismiss = { menuExpanded = false }
-                )
-            }
             if (initMode == "Translate") { // Translate mode
                 // From language button
                 Button(
@@ -106,6 +90,22 @@ fun MainScreen(
                         fontSize = 16.sp
                     )
                 }
+            }
+            Box {
+                IconButton(
+                    onClick = { menuExpanded = true }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "QR More",
+                        tint = Color.White,
+                    )
+                }
+
+                SettingsPopup(
+                    expanded = menuExpanded,
+                    onDismiss = { menuExpanded = false }
+                )
             }
         }
 
