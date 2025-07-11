@@ -1,17 +1,17 @@
 [versions]
-agp = "8.10.1"
+agp = "8.11.1"
 datastore = "1.1.7"
 zxingCore = "3.5.3"
-kotlin = "1.9.0"
+kotlin = "2.2.0"
 coreKtx = "1.16.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 lifecycleRuntimeKtx = "2.9.1"
 activityCompose = "1.10.1"
-composeBom = "2025.06.00"
-detekt = "1.23.0" # Add Detekt version
-navigationCompose = "2.9.0"
+composeBom = "2025.06.01"
+detekt = "1.23.8" # Add Detekt version
+navigationCompose = "2.9.1"
 zxingAndroidEmbedded = "4.3.0"
 androidxRoomGradlePlugin = "2.7.2"
 roomCompiler = "2.7.2"
@@ -48,4 +48,5 @@ androidx-fragment = { group = "androidx.fragment", name = "fragment", version.re
 android-application = { id = "com.android.application", version.ref = "agp" }
 jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" } # Add Detekt plugin
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 
