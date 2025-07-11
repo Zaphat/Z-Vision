@@ -9,13 +9,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zteam.zvision.R
+import com.zteam.zvision.ui.commons.SettingsPopup
 
 @Composable
 fun MainScreen(
@@ -25,6 +31,8 @@ fun MainScreen(
     translateToLanguage: String,
     onNavigateToLanguageSelection: (Boolean) -> Unit
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -32,29 +40,31 @@ fun MainScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         //Settings header
-        if (initMode == "QR") {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Menu,
-                    contentDescription = "QR More",
-                    tint = Color.White
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box {
+                IconButton(
+                    onClick = { menuExpanded = true }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "QR More",
+                        tint = Color.White,
+                    )
+                }
+
+                SettingsPopup(
+                    expanded = menuExpanded,
+                    onDismiss = { menuExpanded = false }
                 )
             }
-        } else { // Translate mode
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            if (initMode == "Translate") { // Translate mode
                 // From language button
                 Button(
                     onClick = { onNavigateToLanguageSelection(true) },
@@ -97,16 +107,9 @@ fun MainScreen(
                         fontSize = 16.sp
                     )
                 }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Icon(
-                    imageVector = Icons.Default.Menu,
-                    contentDescription = "QR More",
-                    tint = Color.White,
-                )
             }
         }
+
 
         // Mode text in the center
         Box(
@@ -215,7 +218,7 @@ fun MainScreen(
                 )
             }
             Button(
-                onClick = { onModeChange("Google Translate") },
+                onClick = { onModeChange("Translate") },
                 modifier = Modifier
                     .padding(start = 5.dp, end = 35.dp)
                     .size(width = 100.dp, height = 50.dp),
@@ -240,5 +243,9 @@ fun viewHistoryQRScans() {
 }
 
 fun openCamera() {
+
+}
+
+fun openSettings() {
 
 }
