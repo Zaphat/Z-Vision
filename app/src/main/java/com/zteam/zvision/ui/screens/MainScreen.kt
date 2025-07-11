@@ -23,7 +23,8 @@ fun MainScreen(
     onModeChange: (String) -> Unit,
     translateFromLanguage: String,
     translateToLanguage: String,
-    onNavigateToLanguageSelection: (Boolean) -> Unit
+    onNavigateToLanguageSelection: (Boolean) -> Unit,
+    onNavigateToQrCreation: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -230,6 +231,22 @@ fun MainScreen(
                     modifier = Modifier
                         .fillMaxSize()
                 )
+            }
+        }
+
+        // Add this at the end of the MainScreen composable
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Button(
+                onClick = { onNavigateToQrCreation() },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1DE9B6)),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text(text = "Create QR Code", color = Color.Black, fontSize = 18.sp)
             }
         }
     }
