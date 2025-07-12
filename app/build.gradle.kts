@@ -1,5 +1,3 @@
-import org.gradle.internal.impldep.com.google.api.client.util.store.DataStore
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
@@ -65,11 +63,12 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation(libs.androidx.androidx.room.gradle.plugin)
-    implementation(libs.androidx.room.compiler)
-    implementation(libs.androidx.room.common.jvm)
-    implementation(libs.androidx.room.runtime.jvm)
     implementation(libs.androidx.fragment)
+
+
+    implementation(libs.androidx.room.runtime)
+
+    // Tests
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

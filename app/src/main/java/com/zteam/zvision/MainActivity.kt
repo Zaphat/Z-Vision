@@ -59,7 +59,8 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 }
-                            }
+                            },
+                            onNavigateToQrCreation = {}
                         )
                     }
                     composable("language_selection/{isFromLanguage}") { backStackEntry ->
