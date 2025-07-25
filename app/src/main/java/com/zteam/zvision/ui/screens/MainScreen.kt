@@ -24,7 +24,8 @@ fun MainScreen(
     translateFromLanguage: String,
     translateToLanguage: String,
     onNavigateToLanguageSelection: (Boolean) -> Unit,
-    onNavigateToQrCreation: () -> Unit
+    onNavigateToQrCreation: () -> Unit,
+    onNavigateToQrStorage: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -133,7 +134,7 @@ fun MainScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Button(
-                onClick = { viewHistoryQRScans() },
+                onClick = { onNavigateToQrStorage() },
                 modifier = Modifier
                     .padding(start = 35.dp, end = 10.dp)
                     .size(width = 50.dp, height = 50.dp),
@@ -172,7 +173,7 @@ fun MainScreen(
             }
 
             Button(
-                onClick = { viewHistoryQRScans() },
+                onClick = { onNavigateToQrStorage() },
                 modifier = Modifier
                     .padding(start = 10.dp, end = 35.dp)
                     .size(width = 50.dp, height = 50.dp),
@@ -232,15 +233,6 @@ fun MainScreen(
                         .fillMaxSize()
                 )
             }
-        }
-
-        // Add this at the end of the MainScreen composable
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp),
-            contentAlignment = Alignment.BottomCenter
-        ) {
             Button(
                 onClick = { onNavigateToQrCreation() },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1DE9B6)),

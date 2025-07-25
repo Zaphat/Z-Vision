@@ -60,7 +60,34 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             },
-                            onNavigateToQrCreation = {}
+                            onNavigateToQrCreation = {
+                                if (!isNavigating) {
+                                    isNavigating = true
+                                    coroutineScope.launch {
+                                        try {
+                                            navController.navigate("qr_creation")
+                                        } catch (e: Exception) {
+                                            // Handle navigation error
+                                        } finally {
+                                            isNavigating = false
+                                        }
+                                    }
+                                }
+                            },
+                            onNavigateToQrStorage = {
+                                if (!isNavigating) {
+                                    isNavigating = true
+                                    coroutineScope.launch {
+                                        try {
+                                            navController.navigate("qr_storage")
+                                        } catch (e: Exception) {
+                                            // Handle navigation error
+                                        } finally {
+                                            isNavigating = false
+                                        }
+                                    }
+                                }
+                            }
                         )
                     }
                     composable("language_selection/{isFromLanguage}") { backStackEntry ->
@@ -80,6 +107,25 @@ class MainActivity : ComponentActivity() {
                             onBackPressed = {
                                 safePopBack()
                             }
+                        )
+                    }
+                    composable("qr_creation") {
+                        com.zteam.zvision.ui.screens.qrCreation.QrCreationScreen(
+                            onBack = { safePopBack() }
+                        )
+                    }
+                    composable("qr_storage") {
+                        // Compose ViewModel for Compose screen
+                        val context = androidx.compose.ui.platform.LocalContext.current
+                        val viewModel = remember {
+                            val db = com.zteam.zvision.data.local.AppDatabase.getInstance(context)
+                            val repo = com.zteam.zvision.data.repository.QrRepository(db.qrDao())
+                            val usecase = com.zteam.zvision.domain.QrUsecase(repo)
+                            com.zteam.zvision.ui.features.qrCreation.QrCreationViewModel(usecase)
+                        }
+                        com.zteam.zvision.ui.screens.qrCreation.QrStorageScreen(
+                            viewModel = viewModel,
+                            onBack = { safePopBack() }
                         )
                     }
                 }
