@@ -24,8 +24,7 @@ fun MainScreen(
     translateFromLanguage: String,
     translateToLanguage: String,
     onNavigateToLanguageSelection: (Boolean) -> Unit,
-    onNavigateToQrCreation: () -> Unit,
-    onNavigateToQrStorage: () -> Unit
+    onNavigateToQrCreation: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -134,7 +133,7 @@ fun MainScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Button(
-                onClick = { onNavigateToQrStorage() },
+                onClick = { viewHistoryQRScans() },
                 modifier = Modifier
                     .padding(start = 35.dp, end = 10.dp)
                     .size(width = 50.dp, height = 50.dp),
@@ -173,7 +172,7 @@ fun MainScreen(
             }
 
             Button(
-                onClick = { onNavigateToQrStorage() },
+                onClick = { viewHistoryQRScans() },
                 modifier = Modifier
                     .padding(start = 10.dp, end = 35.dp)
                     .size(width = 50.dp, height = 50.dp),

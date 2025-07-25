@@ -16,7 +16,7 @@ interface QrDao {
     suspend fun delete(qr: QrModel)
     @Query("""
         SELECT * FROM qr
-        WHERE (:name IS NULL OR name = :name)
+        WHERE (:name IS NULL OR LOWER(name) LIKE '%' || LOWER(:name) || '%')
         AND (:createdAt IS NULL OR createdAt = :createdAt)
         AND (:favorite IS NULL OR favorite = :favorite)
     """)

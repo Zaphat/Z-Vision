@@ -73,20 +73,6 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 }
-                            },
-                            onNavigateToQrStorage = {
-                                if (!isNavigating) {
-                                    isNavigating = true
-                                    coroutineScope.launch {
-                                        try {
-                                            navController.navigate("qr_storage")
-                                        } catch (e: Exception) {
-                                            // Handle navigation error
-                                        } finally {
-                                            isNavigating = false
-                                        }
-                                    }
-                                }
                             }
                         )
                     }
@@ -111,7 +97,21 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("qr_creation") {
                         com.zteam.zvision.ui.screens.qrCreation.QrCreationScreen(
-                            onBack = { safePopBack() }
+                            onBack = { safePopBack() },
+                            onNavigateToQrStorage = {
+                                if (!isNavigating) {
+                                    isNavigating = true
+                                    coroutineScope.launch {
+                                        try {
+                                            navController.navigate("qr_storage")
+                                        } catch (e: Exception) {
+                                            // Handle navigation error
+                                        } finally {
+                                            isNavigating = false
+                                        }
+                                    }
+                                }
+                            }
                         )
                     }
                     composable("qr_storage") {

@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 @Composable
 fun QrCreationScreen(
     onBack: () -> Unit = {},
+    onNavigateToQrStorage: () -> Unit = {},
 ) {
     val context = LocalContext.current
     // ViewModel creation (not recommended for prod, but matches Fragment)
@@ -42,6 +43,7 @@ fun QrCreationScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -118,6 +120,10 @@ fun QrCreationScreen(
         }
         Spacer(Modifier.height(16.dp))
         Button(onClick = onBack) { Text("Back") }
+        Spacer(Modifier.height(8.dp))
+        Button(onClick = onNavigateToQrStorage, modifier = Modifier.fillMaxWidth()) {
+            Text("Storage")
+        }
         if (showToast != null) {
             LaunchedEffect(showToast) {
                 kotlinx.coroutines.delay(1500)
