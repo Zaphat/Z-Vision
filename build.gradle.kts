@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android) apply false
     id("io.gitlab.arturbosch.detekt") version "1.23.0" // Add Detekt plugin
     id("org.jlleitschuh.gradle.ktlint") version "11.3.2" // Add ktlint plugin
+    alias(libs.plugins.compose.compiler) apply false
 }
 
 detekt {
