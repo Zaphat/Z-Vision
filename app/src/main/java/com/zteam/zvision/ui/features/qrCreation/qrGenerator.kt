@@ -76,20 +76,6 @@ class QRGenerator() {
         }
     }
 
-//    fun generateQRCodeWithLogo(
-//        content: String,
-//        logoDrawableId: Int,
-//        size: Int = DEFAULT_SIZE,
-//        foregroundColor: Int = Color.BLACK,
-//        backgroundColor: Int = Color.WHITE
-//    ): Bitmap? {
-//        val drawable = ContextCompat.getDrawable(context, logoDrawableId)
-//        return drawable?.let { d ->
-//            val logoBitmap = drawableToBitmap(d)
-//            generateQRCodeWithLogo(content, logoBitmap, size, foregroundColor, backgroundColor)
-//        }
-//    }
-
     private fun createBitmapFromBitMatrix(
         bitMatrix: BitMatrix, foregroundColor: Int, backgroundColor: Int
     ): Bitmap {
@@ -143,18 +129,6 @@ class QRGenerator() {
         }
     }
 
-//    private fun drawableToBitmap(drawable: Drawable): Bitmap {
-//        val bitmap = Bitmap.createBitmap(
-//            drawable.intrinsicWidth,
-//            drawable.intrinsicHeight,
-//            Bitmap.Config.ARGB_8888
-//        )
-//        val canvas = Canvas(bitmap)
-//        drawable.setBounds(0, 0, canvas.width, canvas.height)
-//        drawable.draw(canvas)
-//        return bitmap
-//    }
-
 //    fun copyBitmapToClipboard(bitmap: Bitmap, label: String = "QR Code") {
 //        try {
 //            val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -169,26 +143,5 @@ class QRGenerator() {
 //        } catch (e: Exception) {
 //            e.printStackTrace()
 //        }
-//    }
-
-//    private fun saveBitmapToMediaStore(bitmap: Bitmap, filename: String): Uri? {
-//        return try {
-//            val bytes = ByteArrayOutputStream()
-//            bitmap.compress(Bitmap.CompressFormat.PNG, 100, bytes)
-//            val path = MediaStore.Images.Media.insertImage(
-//                context.contentResolver,
-//                bitmap,
-//                filename,
-//                "QR Code generated image"
-//            )
-//            Uri.parse(path)
-//        } catch (e: Exception) {
-//            e.printStackTrace()
-//            null
-//        }
-//    }
-
-//    fun saveBitmapToGallery(bitmap: Bitmap, filename: String = "qr_code_${System.currentTimeMillis()}"): Uri? {
-//        return saveBitmapToMediaStore(bitmap, filename)
 //    }
 }
