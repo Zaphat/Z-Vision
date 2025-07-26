@@ -1,8 +1,8 @@
-import org.gradle.internal.impldep.com.google.api.client.util.store.DataStore
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
+    alias(libs.plugins.compose.compiler)
+    id("com.google.devtools.ksp") version "2.2.0-2.0.2"
 }
 
 android {
@@ -53,6 +53,8 @@ android {
 
 dependencies {
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.zxing.core)
+    implementation(libs.zxing.android.embedded)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.datastore)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -62,6 +64,14 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.fragment)
+    implementation(libs.room.ktx)
+    implementation(libs.room.runtime)
+
+
+    ksp(libs.androidx.room.compiler)
+
+    // Tests
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
