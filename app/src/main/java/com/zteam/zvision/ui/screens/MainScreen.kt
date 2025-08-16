@@ -109,9 +109,9 @@ fun MainScreen(
             .background(Color.Black),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-    // Selection state for bottom mode buttons
-    val isQRSelected = (initMode == "QR")
-    val isTranslateSelected = initMode == "Translate"
+        // Selection state for bottom mode buttons
+        val isQRSelected = (initMode == "QR")
+        val isTranslateSelected = initMode == "Translate"
 
         if (showResultSheet) {
             ModalBottomSheet(
