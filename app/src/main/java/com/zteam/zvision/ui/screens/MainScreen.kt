@@ -6,10 +6,17 @@ import android.graphics.Paint
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import android.util.Log
+import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -17,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,14 +36,32 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import com.zteam.zvision.R
 import com.zteam.zvision.ui.commons.SettingsPopup
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.platform.LocalContext
+import com.zteam.zvision.ui.features.qrScan.QRDecoder
+import com.zteam.zvision.data.local.AppDatabase
+import com.zteam.zvision.data.repository.QrRepository
+import com.zteam.zvision.domain.QrUsecase
+import com.zteam.zvision.data.model.QrModel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.Date
+import java.util.UUID
 
+@ExperimentalMaterial3Api
 @Composable
 fun MainScreen(
     initMode: String,
@@ -46,13 +72,102 @@ fun MainScreen(
     onNavigateToQrStorage: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var showResultSheet by remember { mutableStateOf(false) }
+    var resultText by remember { mutableStateOf("") }
+    var copyEnabled by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val clipboard = LocalClipboardManager.current
+    val pickMedia = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
+        if (uri != null) {
+            Log.d("PhotoPicker", "Selected URI: $uri")
+            scope.launch {
+                val decoded = withContext(Dispatchers.Default) {
+                    QRDecoder.decodeFromUri(context, uri)
+                }
+                if (decoded != null) {
+                    // Persist QR in database
+                    withContext(Dispatchers.IO) {
+                        val db = AppDatabase.getInstance(context)
+                        val repo = QrRepository(db.qrDao())
+                        val usecase = QrUsecase(repo)
+                        val name = deriveNameFromContent(decoded)
+                        val qr = QrModel(
+                            id = UUID.randomUUID(),
+                            name = name,
+                            createdAt = Date(),
+                            content = decoded.toByteArray(),
+                            favorite = false
+                        )
+                        usecase.insertQr(qr)
+                    }
+                    // Show result in bottom sheet
+                    resultText = decoded
+                    copyEnabled = true
+                    showResultSheet = true
+                } else {
+                    // Show toast only if no QR is found
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "No QR code found in image", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        } else {
+            Log.d("PhotoPicker", "No media selected")
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        //Settings header
+        // Selection state for bottom mode buttons
+        val isQRSelected = (initMode == "QR")
+        val isTranslateSelected = initMode == "Translate"
+
+        if (showResultSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showResultSheet = false },
+                sheetState = sheetState,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Absolute.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SelectionContainer(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = resultText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.verticalScroll(rememberScrollState())
+                            )
+                        }
+                        if (copyEnabled) {
+                            IconButton(onClick = {
+                                clipboard.setText(AnnotatedString(resultText))
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Filled.ContentCopy,
+                                    contentDescription = "Copy to clipboard"
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Settings header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -61,8 +176,7 @@ fun MainScreen(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (initMode == "Translate") { // Translate mode
-                // From language button
+            if (initMode == "Translate") {
                 Button(
                     onClick = { onNavigateToLanguageSelection(true) },
                     modifier = Modifier.weight(1f),
@@ -80,7 +194,6 @@ fun MainScreen(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Arrow or swap icon
                 Icon(
                     painter = painterResource(id = R.drawable.arrow_forward_24px),
                     contentDescription = "Translate Arrow",
@@ -89,7 +202,6 @@ fun MainScreen(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // To language button
                 Button(
                     onClick = { onNavigateToLanguageSelection(false) },
                     modifier = Modifier.weight(1f),
@@ -141,7 +253,6 @@ fun MainScreen(
             }
         }
 
-
         // Mode text in the center
         Box(
             modifier = Modifier
@@ -166,7 +277,13 @@ fun MainScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Button(
-                onClick = { viewHistoryQRScans() },
+                onClick = {
+                    if (initMode != "QR") {
+                        Toast.makeText(context, "TODO: Translate from image not implemented yet", Toast.LENGTH_SHORT).show()
+                    } else {
+                        pickMedia.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
+                    }
+                },
                 modifier = Modifier
                     .padding(start = 35.dp, end = 10.dp)
                     .size(width = 50.dp, height = 50.dp),
@@ -180,11 +297,10 @@ fun MainScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(8.dp),
-                    contentDescription = "history_icon",
+                    contentDescription = "gallery_icon",
                 )
             }
 
-            // Middle Button - Camera
             Button(
                 onClick = { openCamera() },
                 modifier = Modifier
@@ -224,7 +340,7 @@ fun MainScreen(
             }
         }
 
-        // Buttons at the bottom
+        // Bottom buttons
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -238,14 +354,17 @@ fun MainScreen(
                     .size(width = 100.dp, height = 50.dp),
                 contentPadding = PaddingValues(8.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.DarkGray
+                    containerColor = if (isQRSelected) MaterialTheme.colorScheme.primary else Color.DarkGray,
+                    contentColor = if (isQRSelected) MaterialTheme.colorScheme.onPrimary else Color.White
+                ),
+                elevation = if (isQRSelected) ButtonDefaults.buttonElevation(defaultElevation = 6.dp) else ButtonDefaults.buttonElevation(
+                    defaultElevation = 0.dp
                 )
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.qr_code_24px),
                     contentDescription = "QR More",
-                    modifier = Modifier
-                        .fillMaxSize()
+                    modifier = Modifier.fillMaxSize()
                 )
             }
             Button(
@@ -255,14 +374,17 @@ fun MainScreen(
                     .size(width = 100.dp, height = 50.dp),
                 contentPadding = PaddingValues(8.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.DarkGray
+                    containerColor = if (isTranslateSelected) MaterialTheme.colorScheme.primary else Color.DarkGray,
+                    contentColor = if (isTranslateSelected) MaterialTheme.colorScheme.onPrimary else Color.White
+                ),
+                elevation = if (isTranslateSelected) ButtonDefaults.buttonElevation(defaultElevation = 6.dp) else ButtonDefaults.buttonElevation(
+                    defaultElevation = 0.dp
                 )
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.g_translate_24px),
                     contentDescription = "QR More",
-                    modifier = Modifier
-                        .fillMaxSize()
+                    modifier = Modifier.fillMaxSize()
                 )
             }
         }
@@ -271,10 +393,16 @@ fun MainScreen(
 
 
 fun viewHistoryQRScans() {
-
+    // TODO: Implement navigation to history screen
 }
 
 fun openCamera() {
-
+    // TODO: Implement camera opening
 }
 
+private fun deriveNameFromContent(content: String, maxLen: Int = 32): String {
+    val trimmed = content.trim()
+    if (trimmed.isEmpty()) return "Scanned QR"
+    val singleLine = trimmed.lineSequence().firstOrNull() ?: trimmed
+    return if (singleLine.length <= maxLen) singleLine else singleLine.take(maxLen - 1) + "…"
+}
