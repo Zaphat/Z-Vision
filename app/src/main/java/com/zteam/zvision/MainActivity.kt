@@ -3,6 +3,7 @@ package com.zteam.zvision
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -15,6 +16,7 @@ import com.zteam.zvision.ui.commons.LanguageChoosingPage
 import com.zteam.zvision.ui.theme.ZVisionTheme
 
 class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -52,7 +54,7 @@ class MainActivity : ComponentActivity() {
                                     coroutineScope.launch {
                                         try {
                                             navController.navigate("language_selection/$isFromLanguage")
-                                        } catch (e: Exception) {
+                                        } catch (_: Exception) {
                                             // Handle navigation error
                                         } finally {
                                             isNavigating = false
@@ -66,7 +68,7 @@ class MainActivity : ComponentActivity() {
                                     coroutineScope.launch {
                                         try {
                                             navController.navigate("qr_creation")
-                                        } catch (e: Exception) {
+                                        } catch (_: Exception) {
                                             // Handle navigation error
                                         } finally {
                                             isNavigating = false
@@ -104,7 +106,7 @@ class MainActivity : ComponentActivity() {
                                     coroutineScope.launch {
                                         try {
                                             navController.navigate("qr_storage")
-                                        } catch (e: Exception) {
+                                        } catch (_: Exception) {
                                             // Handle navigation error
                                         } finally {
                                             isNavigating = false
