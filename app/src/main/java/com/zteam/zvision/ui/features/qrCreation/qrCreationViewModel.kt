@@ -54,6 +54,20 @@ class QrCreationViewModel(
         }
     }
 
+    fun createAndSaveQrWithImage(name: String, content: QRContent, imageBytes: ByteArray, favorite: Boolean = false) {
+        val qr = QrModel(
+            id = UUID.randomUUID(),
+            name = name,
+            createdAt = Date(),
+            content = imageBytes, // Store the complete QR image (with logo if present)
+            favorite = favorite
+        )
+        viewModelScope.launch {
+            usecase.insertQr(qr)
+            loadAllQrs()
+        }
+    }
+
     fun loadAllQrs() {
         viewModelScope.launch {
             _qrList.value = usecase.getAllQrs()

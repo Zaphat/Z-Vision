@@ -1,6 +1,10 @@
 package com.zteam.zvision.ui.screens.qrCreation
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.os.Build
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -18,6 +22,10 @@ import com.zteam.zvision.domain.QrUsecase
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.provider.MediaStore
+import java.io.ByteArrayOutputStream
 
 @Composable
 fun QrCreationScreen(
@@ -39,6 +47,29 @@ fun QrCreationScreen(
     var favorite by remember { mutableStateOf(false) }
     var showToast by remember { mutableStateOf<String?>(null) }
     val generatedBitmap by viewModel.generatedBitmap.collectAsState()
+
+    // Logo selection state
+    var selectedLogoUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedLogoBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var finalQrBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    val qrGenerator = remember { QRGenerator() }
+
+    val pickLogoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        selectedLogoUri = uri
+        finalQrBitmap = null // reset preview when logo changes
+        if (uri != null) {
+            selectedLogoBitmap = decodeBitmapFromUri(context, uri)
+            if (selectedLogoBitmap != null) {
+                showToast = "Logo selected: ${selectedLogoBitmap!!.width}x${selectedLogoBitmap!!.height}"
+            } else {
+                showToast = "Failed to load logo image"
+            }
+        } else {
+            selectedLogoBitmap = null
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -77,6 +108,20 @@ fun QrCreationScreen(
             Checkbox(checked = favorite, onCheckedChange = { favorite = it })
             Text("Favorite")
         }
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Button(onClick = { pickLogoLauncher.launch("image/*") }) { Text("Choose Logo") }
+            Spacer(Modifier.width(8.dp))
+            if (selectedLogoUri != null) {
+                AssistChip(onClick = { 
+                    selectedLogoUri = null; 
+                    selectedLogoBitmap = null; 
+                    finalQrBitmap = null 
+                }, label = { Text("Clear logo") })
+            } else {
+                AssistChip(onClick = { /* no-op */ }, enabled = false, label = { Text("No logo selected") })
+            }
+        }
         Spacer(Modifier.height(16.dp))
         Row {
             Button(onClick = {
@@ -86,7 +131,43 @@ fun QrCreationScreen(
                     else -> null
                 }
                 if (qrContent != null) {
-                    viewModel.generateQrBitmap(qrContent)
+                    if (selectedLogoBitmap != null) {
+                        // Validate logo bitmap before generation
+                        if (selectedLogoBitmap!!.isRecycled) {
+                            showToast = "Logo bitmap is invalid, please select again"
+                            selectedLogoBitmap = null
+                            return@Button
+                        }
+                        
+                        // Generate QR with logo
+                        try {
+                            finalQrBitmap = qrGenerator.generateQRCodeWithLogo(
+                                content = qrContent,
+                                logoBitmap = selectedLogoBitmap!!
+                            )
+                            if (finalQrBitmap == null) {
+                                showToast = "Failed to generate QR with logo, falling back to regular QR"
+                                // Fallback to regular QR
+                                finalQrBitmap = qrGenerator.generateQRCode(content = qrContent)
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            showToast = "Error generating QR with logo, falling back to regular QR"
+                            // Fallback to regular QR
+                            finalQrBitmap = qrGenerator.generateQRCode(content = qrContent)
+                        }
+                    } else {
+                        // Generate regular QR
+                        try {
+                            finalQrBitmap = qrGenerator.generateQRCode(content = qrContent)
+                            if (finalQrBitmap == null) {
+                                showToast = "Failed to generate QR"
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            showToast = "Error generating QR: ${e.message}"
+                        }
+                    }
                 } else {
                     showToast = "Invalid content"
                 }
@@ -100,20 +181,22 @@ fun QrCreationScreen(
                     "Text" -> if (content.isNotBlank()) TextQR(content) else null
                     else -> null
                 }
-                if (name.isNotBlank() && qrContent != null) {
-                    viewModel.createAndSaveQr(name, qrContent, favorite)
+                if (name.isNotBlank() && qrContent != null && finalQrBitmap != null) {
+                    // Convert bitmap to byte array for storage
+                    val byteArray = bitmapToByteArray(finalQrBitmap!!)
+                    viewModel.createAndSaveQrWithImage(name, qrContent, byteArray, favorite)
                     showToast = "QR saved!"
                 } else {
-                    showToast = "Fill all fields"
+                    showToast = "Fill all fields and generate QR first"
                 }
             }) {
                 Text("Save QR")
             }
         }
         Spacer(Modifier.height(24.dp))
-        if (generatedBitmap != null) {
+        if (finalQrBitmap != null) {
             androidx.compose.foundation.Image(
-                bitmap = generatedBitmap!!.asImageBitmap(),
+                bitmap = finalQrBitmap!!.asImageBitmap(),
                 contentDescription = "Generated QR",
                 modifier = Modifier.size(200.dp)
             )
@@ -150,4 +233,44 @@ private fun DropdownMenuBox(selected: String, onTypeChange: (String) -> Unit) {
             })
         }
     }
+}
+
+private fun ensureCompatibleBitmap(bitmap: Bitmap): Bitmap {
+    return when (bitmap.config) {
+        android.graphics.Bitmap.Config.HARDWARE -> {
+            val compatibleBitmap = bitmap.copy(android.graphics.Bitmap.Config.ARGB_8888, true)
+            bitmap.recycle()
+            compatibleBitmap
+        }
+        android.graphics.Bitmap.Config.RGB_565 -> {
+            val compatibleBitmap = bitmap.copy(android.graphics.Bitmap.Config.ARGB_8888, true)
+            bitmap.recycle()
+            compatibleBitmap
+        }
+        else -> bitmap
+    }
+}
+
+private fun decodeBitmapFromUri(context: Context, uri: Uri): Bitmap? {
+    return try {
+        val originalBitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val source = ImageDecoder.createSource(context.contentResolver, uri)
+            ImageDecoder.decodeBitmap(source)
+        } else {
+            @Suppress("DEPRECATION")
+            MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+        }
+        
+        // Ensure bitmap is in a compatible format
+        originalBitmap?.let { ensureCompatibleBitmap(it) }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+
+private fun bitmapToByteArray(bitmap: Bitmap): ByteArray {
+    val stream = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+    return stream.toByteArray()
 } 

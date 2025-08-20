@@ -70,7 +70,7 @@ class QRGenerator() {
 
             val qrBitmap = createBitmapFromBitMatrix(bitMatrix, foregroundColor, backgroundColor)
             overlayLogo(qrBitmap, logoBitmap)
-        } catch (e: WriterException) {
+        } catch (e: Exception) {
             e.printStackTrace()
             null
         }
@@ -98,6 +98,7 @@ class QRGenerator() {
             val qrHeight = qrBitmap.height
 
             val logoSize = (minOf(qrWidth, qrHeight) * LOGO_SIZE_RATIO).toInt()
+            
             val resizedLogo = logoBitmap.scale(width = logoSize, height = logoSize, filter = true)
 
             val combined = createBitmap(qrWidth, qrHeight)
@@ -122,6 +123,7 @@ class QRGenerator() {
             canvas.drawRoundRect(backgroundRect, 8f, 8f, backgroundPaint)
 
             canvas.drawBitmap(resizedLogo, logoX, logoY, null)
+            
             combined
         } catch (e: Exception) {
             e.printStackTrace()

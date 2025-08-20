@@ -18,6 +18,9 @@ import com.zteam.zvision.ui.screens.qrCreation.QRImage
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import android.graphics.BitmapFactory
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.ui.graphics.Color
@@ -174,7 +177,18 @@ fun QrStorageItem(qr: QrModel,onFavorite: () -> Unit ,onDelete: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(Modifier.size(64.dp)) {
-                QRImage(content = qr.content.decodeToString().let { com.zteam.zvision.ui.features.qrCreation.TextQR(it) })
+                // Display the stored QR image directly from the database
+                val bitmap = BitmapFactory.decodeByteArray(qr.content, 0, qr.content.size)
+                if (bitmap != null) {
+                    androidx.compose.foundation.Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Stored QR Code",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    // Fallback: try to display as text-based QR if bitmap decoding fails
+                    QRImage(content = qr.content.decodeToString().let { com.zteam.zvision.ui.features.qrCreation.TextQR(it) })
+                }
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
