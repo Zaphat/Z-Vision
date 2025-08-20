@@ -9,10 +9,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.*
+import com.zteam.zvision.data.local.AppDatabase
+import com.zteam.zvision.data.repository.QrRepository
+import com.zteam.zvision.domain.QrUsecase
 import kotlinx.coroutines.launch
 import com.zteam.zvision.ui.screens.MainScreen
 import com.zteam.zvision.ui.commons.LanguageChoosingPage
+import com.zteam.zvision.ui.features.qrCreation.QrCreationViewModel
+import com.zteam.zvision.ui.screens.qrCreation.QrCreationScreen
+import com.zteam.zvision.ui.screens.qrCreation.QrStorageScreen
 import com.zteam.zvision.ui.theme.ZVisionTheme
 
 class MainActivity : ComponentActivity() {
@@ -98,7 +105,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable("qr_creation") {
-                        com.zteam.zvision.ui.screens.qrCreation.QrCreationScreen(
+                        QrCreationScreen(
                             onBack = { safePopBack() },
                             onNavigateToQrStorage = {
                                 if (!isNavigating) {
@@ -118,14 +125,14 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("qr_storage") {
                         // Compose ViewModel for Compose screen
-                        val context = androidx.compose.ui.platform.LocalContext.current
+                        val context = LocalContext.current
                         val viewModel = remember {
-                            val db = com.zteam.zvision.data.local.AppDatabase.getInstance(context)
-                            val repo = com.zteam.zvision.data.repository.QrRepository(db.qrDao())
-                            val usecase = com.zteam.zvision.domain.QrUsecase(repo)
-                            com.zteam.zvision.ui.features.qrCreation.QrCreationViewModel(usecase)
+                            val db = AppDatabase.getInstance(context)
+                            val repo = QrRepository(db.qrDao())
+                            val usecase = QrUsecase(repo)
+                            QrCreationViewModel(usecase)
                         }
-                        com.zteam.zvision.ui.screens.qrCreation.QrStorageScreen(
+                        QrStorageScreen(
                             viewModel = viewModel,
                             onBack = { safePopBack() },
                             onNavigateToQrCreation = {

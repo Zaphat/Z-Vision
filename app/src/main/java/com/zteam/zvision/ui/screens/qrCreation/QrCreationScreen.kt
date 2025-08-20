@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
@@ -25,6 +24,13 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.provider.MediaStore
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import java.io.ByteArrayOutputStream
 
 @Composable
@@ -54,6 +60,10 @@ fun QrCreationScreen(
     var finalQrBitmap by remember { mutableStateOf<Bitmap?>(null) }
     val qrGenerator = remember { QRGenerator() }
 
+    var showDialog by remember { mutableStateOf(false) }
+    var inputText by remember { mutableStateOf("") }
+    var finalText by remember { mutableStateOf("") }
+
     val pickLogoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -62,7 +72,8 @@ fun QrCreationScreen(
         if (uri != null) {
             selectedLogoBitmap = decodeBitmapFromUri(context, uri)
             if (selectedLogoBitmap != null) {
-                showToast = "Logo selected: ${selectedLogoBitmap!!.width}x${selectedLogoBitmap!!.height}"
+                showToast =
+                    "Logo selected: ${selectedLogoBitmap!!.width}x${selectedLogoBitmap!!.height}"
             } else {
                 showToast = "Failed to load logo image"
             }
@@ -74,145 +85,244 @@ fun QrCreationScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color.Black)
             .statusBarsPadding()
-            .padding(24.dp),
+            .navigationBarsPadding()
+            .imePadding()
+            .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Create QR Code", style = MaterialTheme.typography.headlineSmall)
-        Spacer(Modifier.height(16.dp))
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("QR Name") },
+        Text("Create QR Code", style = MaterialTheme.typography.headlineSmall, color = Color.White)
+
+        Spacer(Modifier.height(24.dp))
+
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-        )
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Type:")
-            Spacer(Modifier.width(8.dp))
-            DropdownMenuBox(type, onTypeChange = { type = it })
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End,
+        ) {
+            Checkbox(
+                checked = favorite,
+                onCheckedChange = { favorite = it },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = Color.DarkGray,
+                    uncheckedColor = Color.White,
+                    checkmarkColor = Color.White
+                )
+            )
+            Text("Favorite", color = Color.White)
         }
-        Spacer(Modifier.height(8.dp))
+
         OutlinedTextField(
             value = content,
             onValueChange = { content = it },
             label = { Text("Content") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = false,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done)
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Done
+            ),
         )
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = favorite, onCheckedChange = { favorite = it })
-            Text("Favorite")
-        }
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = { pickLogoLauncher.launch("image/*") }) { Text("Choose Logo") }
-            Spacer(Modifier.width(8.dp))
+
+        Spacer(Modifier.height(24.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Button(
+                onClick = { pickLogoLauncher.launch("image/*") },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.DarkGray
+                ),
+            ) { Text("Choose Logo") }
             if (selectedLogoUri != null) {
-                AssistChip(onClick = { 
-                    selectedLogoUri = null; 
-                    selectedLogoBitmap = null; 
-                    finalQrBitmap = null 
-                }, label = { Text("Clear logo") })
+                AssistChip(
+                    onClick = {
+                        selectedLogoUri = null;
+                        selectedLogoBitmap = null;
+                        finalQrBitmap = null
+                    }, label = { Text("Clear logo") },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = Color.Magenta,
+                        labelColor = Color.White,
+                        disabledContainerColor = Color.DarkGray,
+                        disabledLabelColor = Color.White
+                    )
+                )
             } else {
-                AssistChip(onClick = { /* no-op */ }, enabled = false, label = { Text("No logo selected") })
+                AssistChip(
+                    onClick = { /* no-op */ },
+                    enabled = false,
+                    label = { Text("No logo selected") },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = Color.Magenta,
+                        labelColor = Color.White,
+                        disabledContainerColor = Color.DarkGray,
+                        disabledLabelColor = Color.White
+                    )
+                )
             }
         }
-        Spacer(Modifier.height(16.dp))
-        Row {
-            Button(onClick = {
-                val qrContent = when (type) {
-                    "URL" -> if (content.isNotBlank()) UrlQR(content) else null
-                    "Text" -> if (content.isNotBlank()) TextQR(content) else null
-                    else -> null
-                }
-                if (qrContent != null) {
-                    if (selectedLogoBitmap != null) {
-                        // Validate logo bitmap before generation
-                        if (selectedLogoBitmap!!.isRecycled) {
-                            showToast = "Logo bitmap is invalid, please select again"
-                            selectedLogoBitmap = null
-                            return@Button
-                        }
-                        
-                        // Generate QR with logo
-                        try {
-                            finalQrBitmap = qrGenerator.generateQRCodeWithLogo(
-                                content = qrContent,
-                                logoBitmap = selectedLogoBitmap!!
-                            )
-                            if (finalQrBitmap == null) {
-                                showToast = "Failed to generate QR with logo, falling back to regular QR"
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(
+                onClick = {
+                    val qrContent = if (content.isNotBlank()) TextQR(content) else null
+                    if (qrContent != null) {
+                        if (selectedLogoBitmap != null) {
+                            // Validate logo bitmap before generation
+                            if (selectedLogoBitmap!!.isRecycled) {
+                                showToast = "Logo bitmap is invalid, please select again"
+                                selectedLogoBitmap = null
+                                return@Button
+                            }
+
+                            // Generate QR with logo
+                            try {
+                                finalQrBitmap = qrGenerator.generateQRCodeWithLogo(
+                                    content = qrContent,
+                                    logoBitmap = selectedLogoBitmap!!
+                                )
+                                if (finalQrBitmap == null) {
+                                    showToast =
+                                        "Failed to generate QR with logo, falling back to regular QR"
+                                    // Fallback to regular QR
+                                    finalQrBitmap = qrGenerator.generateQRCode(content = qrContent)
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                showToast =
+                                    "Error generating QR with logo, falling back to regular QR"
                                 // Fallback to regular QR
                                 finalQrBitmap = qrGenerator.generateQRCode(content = qrContent)
                             }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                            showToast = "Error generating QR with logo, falling back to regular QR"
-                            // Fallback to regular QR
-                            finalQrBitmap = qrGenerator.generateQRCode(content = qrContent)
+                        } else {
+                            // Generate regular QR
+                            try {
+                                finalQrBitmap = qrGenerator.generateQRCode(content = qrContent)
+                                if (finalQrBitmap == null) {
+                                    showToast = "Failed to generate QR"
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                                showToast = "Error generating QR: ${e.message}"
+                            }
                         }
                     } else {
-                        // Generate regular QR
-                        try {
-                            finalQrBitmap = qrGenerator.generateQRCode(content = qrContent)
-                            if (finalQrBitmap == null) {
-                                showToast = "Failed to generate QR"
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                            showToast = "Error generating QR: ${e.message}"
-                        }
+                        showToast = "Invalid content"
                     }
-                } else {
-                    showToast = "Invalid content"
-                }
-            }) {
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.DarkGray
+                ),
+            ) {
                 Text("Generate QR")
             }
-            Spacer(Modifier.width(16.dp))
-            Button(onClick = {
-                val qrContent = when (type) {
-                    "URL" -> if (content.isNotBlank()) UrlQR(content) else null
-                    "Text" -> if (content.isNotBlank()) TextQR(content) else null
-                    else -> null
-                }
-                if (name.isNotBlank() && qrContent != null && finalQrBitmap != null) {
-                    // Convert bitmap to byte array for storage
-                    val byteArray = bitmapToByteArray(finalQrBitmap!!)
-                    viewModel.createAndSaveQrWithImage(name, qrContent, byteArray, favorite)
-                    showToast = "QR saved!"
-                } else {
-                    showToast = "Fill all fields and generate QR first"
-                }
-            }) {
+            Button(
+                onClick = {
+                    if (finalQrBitmap == null) {
+                        showToast = "Please generate QR first"
+                    } else showDialog = true
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.DarkGray
+                ),
+            ) {
                 Text("Save QR")
             }
         }
+
+        LaunchedEffect(name) {
+            val qrContent = if (content.isNotBlank()) TextQR(content) else null
+            if (finalQrBitmap != null && name.isNotBlank() && qrContent != null) {
+                // Convert bitmap to byte array for storage
+                val byteArray = bitmapToByteArray(finalQrBitmap!!)
+                viewModel.createAndSaveQrWithImage(name, qrContent, byteArray, favorite)
+                showToast = "QR saved!"
+            }
+        }
+
         Spacer(Modifier.height(24.dp))
+
         if (finalQrBitmap != null) {
-            androidx.compose.foundation.Image(
+            Image(
                 bitmap = finalQrBitmap!!.asImageBitmap(),
                 contentDescription = "Generated QR",
                 modifier = Modifier.size(200.dp)
             )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(200.dp) // makes it square
+                    .border(
+                        width = 2.dp,
+                        color = Color.White,
+                    )
+            )
         }
-        Spacer(Modifier.height(16.dp))
-        Button(onClick = onBack) { Text("Back") }
-        Spacer(Modifier.height(8.dp))
-        Button(onClick = onNavigateToQrStorage, modifier = Modifier.fillMaxWidth()) {
-            Text("Storage")
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = onNavigateToQrStorage,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.DarkGray
+            ),
+        ) {
+            Text("Go to storage")
         }
+
+        Spacer(modifier = Modifier.weight(1f))
+
         if (showToast != null) {
             LaunchedEffect(showToast) {
-                kotlinx.coroutines.delay(1500)
+                kotlinx.coroutines.delay(3000)
                 showToast = null
             }
             Snackbar { Text(showToast!!) }
+        }
+
+        if (showDialog) {
+            AlertDialog(
+                onDismissRequest = { showDialog = false; inputText = "" },
+                title = { Text("Enter QR Name") },
+                text = {
+                    OutlinedTextField(
+                        value = inputText,
+                        onValueChange = { inputText = it },
+                        label = { Text("QR Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        if (inputText.isNotBlank()) {
+                            name = inputText
+                            showDialog = false
+                            inputText = "" // clear after submit
+                        } else showToast = "Please enter a name"
+                    }) {
+                        Text("Submit")
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = {
+                        showDialog = false
+                        inputText = ""
+                    }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }
@@ -242,11 +352,13 @@ private fun ensureCompatibleBitmap(bitmap: Bitmap): Bitmap {
             bitmap.recycle()
             compatibleBitmap
         }
+
         android.graphics.Bitmap.Config.RGB_565 -> {
             val compatibleBitmap = bitmap.copy(android.graphics.Bitmap.Config.ARGB_8888, true)
             bitmap.recycle()
             compatibleBitmap
         }
+
         else -> bitmap
     }
 }
@@ -260,7 +372,7 @@ private fun decodeBitmapFromUri(context: Context, uri: Uri): Bitmap? {
             @Suppress("DEPRECATION")
             MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
         }
-        
+
         // Ensure bitmap is in a compatible format
         originalBitmap?.let { ensureCompatibleBitmap(it) }
     } catch (e: Exception) {
