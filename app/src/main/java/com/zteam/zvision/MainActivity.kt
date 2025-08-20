@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            ZVisionTheme {
+            ZVisionTheme (){
                 var initMode by remember { mutableStateOf("QR") }
                 var initTranslateFromLanguage by remember { mutableStateOf("Tiếng Việt") }
                 var initTranslateToLanguage by remember { mutableStateOf("English") }
@@ -62,13 +62,13 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             },
-                            onNavigateToQrCreation = {
+                            onNavigateToQrStorage = {
                                 if (!isNavigating) {
                                     isNavigating = true
                                     coroutineScope.launch {
                                         try {
-                                            navController.navigate("qr_creation")
-                                        } catch (_: Exception) {
+                                            navController.navigate("qr_storage")
+                                        } catch (e: Exception) {
                                             // Handle navigation error
                                         } finally {
                                             isNavigating = false
@@ -127,7 +127,21 @@ class MainActivity : ComponentActivity() {
                         }
                         com.zteam.zvision.ui.screens.qrCreation.QrStorageScreen(
                             viewModel = viewModel,
-                            onBack = { safePopBack() }
+                            onBack = { safePopBack() },
+                            onNavigateToQrCreation = {
+                                if (!isNavigating) {
+                                    isNavigating = true
+                                    coroutineScope.launch {
+                                        try {
+                                            navController.navigate("qr_creation")
+                                        } catch (e: Exception) {
+                                            // Handle navigation error
+                                        } finally {
+                                            isNavigating = false
+                                        }
+                                    }
+                                }
+                            }
                         )
                     }
                 }

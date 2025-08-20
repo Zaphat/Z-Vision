@@ -1,6 +1,11 @@
 // screens/MainScreen.kt
 package com.zteam.zvision.ui.screens
 
+import android.graphics.DashPathEffect
+import android.graphics.Paint
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -22,12 +27,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import com.zteam.zvision.R
 import com.zteam.zvision.ui.commons.SettingsPopup
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -54,7 +69,7 @@ fun MainScreen(
     translateFromLanguage: String,
     translateToLanguage: String,
     onNavigateToLanguageSelection: (Boolean) -> Unit,
-    onNavigateToQrCreation: () -> Unit
+    onNavigateToQrStorage: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -202,6 +217,24 @@ fun MainScreen(
                     )
                 }
             }
+            else if (initMode == "QR") {
+                Button (
+                    onClick = {onNavigateToQrStorage()},
+                    modifier = Modifier
+                        .padding(start = 0.dp, end = 105.dp)
+                        .size(width = 100.dp, height = 50.dp),
+                    contentPadding = PaddingValues(0.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.DarkGray
+                    )
+                ){
+                    Text(text = "My QR" ,
+                        color = Color.White,
+                        fontSize = 16.sp
+                    )
+                }
+            }
+
             Box {
                 IconButton(
                     onClick = { menuExpanded = true }
@@ -354,16 +387,10 @@ fun MainScreen(
                     modifier = Modifier.fillMaxSize()
                 )
             }
-            Button(
-                onClick = { onNavigateToQrCreation() },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1DE9B6)),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text(text = "Create QR Code", color = Color.Black, fontSize = 18.sp)
-            }
         }
     }
 }
+
 
 fun viewHistoryQRScans() {
     // TODO: Implement navigation to history screen
