@@ -62,7 +62,6 @@ fun QrCreationScreen(
 
     var showDialog by remember { mutableStateOf(false) }
     var inputText by remember { mutableStateOf("") }
-    var finalText by remember { mutableStateOf("") }
 
     val pickLogoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -85,14 +84,12 @@ fun QrCreationScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
             .statusBarsPadding()
             .navigationBarsPadding()
             .imePadding()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Create QR Code", style = MaterialTheme.typography.headlineSmall, color = Color.White)
+        Text("Create QR Code", style = MaterialTheme.typography.headlineSmall)
 
         Spacer(Modifier.height(24.dp))
 
@@ -102,15 +99,8 @@ fun QrCreationScreen(
             horizontalArrangement = Arrangement.End,
         ) {
             Checkbox(
-                checked = favorite,
-                onCheckedChange = { favorite = it },
-                colors = CheckboxDefaults.colors(
-                    checkedColor = Color.DarkGray,
-                    uncheckedColor = Color.White,
-                    checkmarkColor = Color.White
-                )
-            )
-            Text("Favorite", color = Color.White)
+                checked = favorite, onCheckedChange = { favorite = it })
+            Text("Favorite")
         }
 
         OutlinedTextField(
@@ -120,8 +110,7 @@ fun QrCreationScreen(
             modifier = Modifier.fillMaxWidth(),
             singleLine = false,
             keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Done
+                keyboardType = KeyboardType.Text, imeAction = ImeAction.Done
             ),
         )
 
@@ -134,9 +123,6 @@ fun QrCreationScreen(
         ) {
             Button(
                 onClick = { pickLogoLauncher.launch("image/*") },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.DarkGray
-                ),
             ) { Text("Choose Logo") }
             if (selectedLogoUri != null) {
                 AssistChip(
@@ -144,25 +130,14 @@ fun QrCreationScreen(
                         selectedLogoUri = null;
                         selectedLogoBitmap = null;
                         finalQrBitmap = null
-                    }, label = { Text("Clear logo") },
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = Color.Magenta,
-                        labelColor = Color.White,
-                        disabledContainerColor = Color.DarkGray,
-                        disabledLabelColor = Color.White
-                    )
+                    },
+                    label = { Text("Clear logo") },
                 )
             } else {
                 AssistChip(
                     onClick = { /* no-op */ },
                     enabled = false,
                     label = { Text("No logo selected") },
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = Color.Magenta,
-                        labelColor = Color.White,
-                        disabledContainerColor = Color.DarkGray,
-                        disabledLabelColor = Color.White
-                    )
                 )
             }
         }
@@ -189,8 +164,7 @@ fun QrCreationScreen(
                             // Generate QR with logo
                             try {
                                 finalQrBitmap = qrGenerator.generateQRCodeWithLogo(
-                                    content = qrContent,
-                                    logoBitmap = selectedLogoBitmap!!
+                                    content = qrContent, logoBitmap = selectedLogoBitmap!!
                                 )
                                 if (finalQrBitmap == null) {
                                     showToast =
@@ -221,21 +195,15 @@ fun QrCreationScreen(
                         showToast = "Invalid content"
                     }
                 },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.DarkGray
-                ),
             ) {
                 Text("Generate QR")
             }
             Button(
                 onClick = {
                     if (finalQrBitmap == null) {
-                        showToast = "Please generate QR first"
+                        showToast = "Generate QR first"
                     } else showDialog = true
                 },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.DarkGray
-                ),
             ) {
                 Text("Save QR")
             }
@@ -265,7 +233,7 @@ fun QrCreationScreen(
                     .size(200.dp) // makes it square
                     .border(
                         width = 2.dp,
-                        color = Color.White,
+                        color = Color.Black,
                     )
             )
         }
@@ -274,9 +242,6 @@ fun QrCreationScreen(
 
         Button(
             onClick = onNavigateToQrStorage,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.DarkGray
-            ),
         ) {
             Text("Go to storage")
         }
@@ -309,7 +274,7 @@ fun QrCreationScreen(
                             name = inputText
                             showDialog = false
                             inputText = "" // clear after submit
-                        } else showToast = "Please enter a name"
+                        } else showToast = "Enter the QR name"
                     }) {
                         Text("Submit")
                     }
@@ -321,8 +286,7 @@ fun QrCreationScreen(
                     }) {
                         Text("Cancel")
                     }
-                }
-            )
+                })
         }
     }
 }
@@ -369,8 +333,7 @@ private fun decodeBitmapFromUri(context: Context, uri: Uri): Bitmap? {
             val source = ImageDecoder.createSource(context.contentResolver, uri)
             ImageDecoder.decodeBitmap(source)
         } else {
-            @Suppress("DEPRECATION")
-            MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+            @Suppress("DEPRECATION") MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
         }
 
         // Ensure bitmap is in a compatible format
