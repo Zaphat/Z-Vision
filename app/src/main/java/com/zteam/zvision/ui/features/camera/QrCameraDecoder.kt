@@ -5,101 +5,121 @@ import androidx.compose.ui.geometry.Offset
 import com.google.zxing.*
 import com.google.zxing.common.HybridBinarizer
 import com.zteam.zvision.data.model.QrDetection
+import java.nio.ByteBuffer
 
 object QrCameraDecoder {
+
     fun decodeFromImageProxy(
         imageProxy: ImageProxy,
         reader: MultiFormatReader
     ): QrDetection? {
         val width = imageProxy.width
         val height = imageProxy.height
-        val rotation = imageProxy.imageInfo.rotationDegrees
+        val rotation = imageProxy.imageInfo.rotationDegrees % 360
         val yPlane = imageProxy.planes[0]
-        val yBuffer = yPlane.buffer.duplicate().apply { position(0) }
         val rowStride = yPlane.rowStride
 
-        // Copy Y plane into a contiguous buffer of width*height (strip row stride)
-        val yBytes = ByteArray(width * height)
-        var dstOffset = 0
-        for (row in 0 until height) {
-            yBuffer.position(row * rowStride)
-            yBuffer.get(yBytes, dstOffset, width)
-            dstOffset += width
-        }
+        val yBytes = extractYBytes(yPlane.buffer, width, height, rowStride)
 
-        // Fix rotation math: apply the clockwise rotation needed to match the target rotation
-        var data = yBytes
-        var iw = width
-        var ih = height
-        when (rotation % 360) {
-            0 -> { /* no-op */ }
-            90 -> {
-                // Rotate 90 degrees clockwise: (x,y) -> (H-1-y, x)
-                val out = ByteArray(width * height)
-                val newW = height
-                val newH = width
-                for (y in 0 until height) {
-                    val ySrcRow = y * width
-                    for (x in 0 until width) {
-                        val nx = height - 1 - y
-                        val ny = x
-                        out[ny * newW + nx] = yBytes[ySrcRow + x]
-                    }
-                }
-                data = out
-                iw = newW
-                ih = newH
-            }
-            180 -> {
-                // Rotate 180: (x,y) -> (W-1-x, H-1-y)
-                val out = ByteArray(width * height)
-                for (y in 0 until height) {
-                    val ySrcRow = y * width
-                    val yDstRow = (height - 1 - y) * width
-                    for (x in 0 until width) {
-                        out[yDstRow + (width - 1 - x)] = yBytes[ySrcRow + x]
-                    }
-                }
-                data = out
-                iw = width
-                ih = height
-            }
-            270 -> {
-                // Rotate 90 degrees counter-clockwise: (x,y) -> (y, W-1-x)
-                val out = ByteArray(width * height)
-                val newW = height
-                val newH = width
-                for (y in 0 until height) {
-                    val ySrcRow = y * width
-                    for (x in 0 until width) {
-                        val nx = y
-                        val ny = width - 1 - x
-                        out[ny * newW + nx] = yBytes[ySrcRow + x]
-                    }
-                }
-                data = out
-                iw = newW
-                ih = newH
-            }
-        }
+        val (rotatedData, iw, ih) = rotateYUV(yBytes, width, height, rotation)
 
+        // Focus on a centered crop to reduce noise and improve decode chance.
+        val cropScale = 0.75f // analyze central 75% of the image
+        val cropW = (iw * cropScale).toInt().coerceAtLeast(1)
+        val cropH = (ih * cropScale).toInt().coerceAtLeast(1)
+        val left = ((iw - cropW) / 2).coerceAtLeast(0)
+        val top = ((ih - cropH) / 2).coerceAtLeast(0)
         val source = PlanarYUVLuminanceSource(
-            data, iw, ih, 0, 0, iw, ih, false
+            rotatedData, iw, ih, left, top, cropW, cropH, false
         )
+
         val binary = BinaryBitmap(HybridBinarizer(source))
+
         return try {
-            val result = reader.decodeWithState(binary)
-            val pts = result.resultPoints?.map { Offset(it.x, it.y) } ?: emptyList()
+            val result = try {
+                reader.decodeWithState(binary)
+            } catch (_: NotFoundException) {
+                val altBinary = BinaryBitmap(com.google.zxing.common.GlobalHistogramBinarizer(source))
+                reader.decodeWithState(altBinary)
+            }
+            // Map points from cropped source back to full rotated image cords
+            val pts = result.resultPoints?.map { Offset(it.x + left, it.y + top) } ?: emptyList()
             QrDetection(
                 text = result.text,
                 points = pts,
-                imageWidth = source.width,
-                imageHeight = source.height
+                imageWidth = iw,
+                imageHeight = ih
             )
         } catch (_: NotFoundException) {
             null
         } finally {
             reader.reset()
         }
+    }
+
+    /** Extracts contiguous Y plane bytes, stripping stride padding. */
+    private fun extractYBytes(buffer: ByteBuffer, width: Int, height: Int, rowStride: Int): ByteArray {
+        val yBytes = ByteArray(width * height)
+        val dup = buffer.duplicate().apply { position(0) }
+        var dst = 0
+        for (row in 0 until height) {
+            dup.position(row * rowStride)
+            dup.get(yBytes, dst, width)
+            dst += width
+        }
+        return yBytes
+    }
+
+    /** Rotates YUV data according to rotation degrees. */
+    private fun rotateYUV(data: ByteArray, width: Int, height: Int, rotation: Int): Triple<ByteArray, Int, Int> {
+        if (rotation == 0) return Triple(data, width, height)
+
+        val out: ByteArray
+        val iw: Int
+        val ih: Int
+
+        when (rotation) {
+            90 -> {
+                out = ByteArray(data.size)
+                for (y in 0 until height) {
+                    val srcRow = y * width
+                    for (x in 0 until width) {
+                        val nx = height - 1 - y
+                        val ny = x
+                        out[ny * height + nx] = data[srcRow + x]
+                    }
+                }
+                iw = height
+                ih = width
+            }
+            180 -> {
+                out = ByteArray(data.size)
+                for (y in 0 until height) {
+                    val srcRow = y * width
+                    val dstRow = (height - 1 - y) * width
+                    for (x in 0 until width) {
+                        out[dstRow + (width - 1 - x)] = data[srcRow + x]
+                    }
+                }
+                iw = width
+                ih = height
+            }
+            270 -> {
+                out = ByteArray(data.size)
+                for (y in 0 until height) {
+                    val srcRow = y * width
+                    for (x in 0 until width) {
+                        val nx = y
+                        val ny = width - 1 - x
+                        out[ny * height + nx] = data[srcRow + x]
+                    }
+                }
+                iw = height
+                ih = width
+            }
+            else -> return Triple(data, width, height) // fallback
+        }
+
+        return Triple(out, iw, ih)
     }
 }

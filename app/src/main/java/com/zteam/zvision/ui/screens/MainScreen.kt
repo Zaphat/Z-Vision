@@ -8,6 +8,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.DashPathEffect
+import android.graphics.Paint
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -35,6 +40,11 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntSize
@@ -43,6 +53,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import com.zteam.zvision.R
 import com.zteam.zvision.data.model.QrDetection
 import com.zteam.zvision.ui.commons.SettingsPopup

@@ -13,10 +13,17 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import com.google.zxing.*
 import com.zteam.zvision.data.model.QrDetection
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
 import android.util.Rational
+import androidx.annotation.OptIn
+import androidx.compose.ui.geometry.Offset
+import com.google.mlkit.vision.barcode.common.Barcode
 
+@OptIn(ExperimentalGetImage::class)
 @Composable
 fun CameraQRPreview(
     modifier: Modifier = Modifier,
@@ -33,12 +40,21 @@ fun CameraQRPreview(
     val mainExecutor = remember { ContextCompat.getMainExecutor(context) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     val lastAnalyzedAt = remember { AtomicLong(0L) }
-    val scanRate = 200L
+    // more responsive; adjust if CPU usage is too high
+    val scanRate = 360L
 
     // Hold last detection to avoid blinking when decode intermittently fails
-    val holdMs = 200L
+    val holdMs = 360L
     val lastDetAt = remember { AtomicLong(0L) }
     var lastDet: QrDetection? by remember { mutableStateOf(null) }
+
+    // ML Kit scanner (fast path)
+    val mlOptions = remember {
+        BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .build()
+    }
+    val barcodeScanner = remember { BarcodeScanning.getClient(mlOptions) }
 
     DisposableEffect(lifecycleOwner) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
@@ -58,6 +74,8 @@ fun CameraQRPreview(
 
                 val analysis = ImageAnalysis.Builder()
                     .setTargetRotation(rotation)
+                    // ensure we get YUV_420_888 buffers for stable plane layout
+                    .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
 
@@ -76,20 +94,71 @@ fun CameraQRPreview(
                     }
                     lastAnalyzedAt.set(now)
 
-                    val det = QrCameraDecoder.decodeFromImageProxy(imageProxy, reader)
-                    val outDet = if (det != null && det.points.isNotEmpty()) {
-                        lastDet = det
-                        lastDetAt.set(now)
-                        det
-                    } else {
-                        val age = now - lastDetAt.get()
-                        if (age <= holdMs) lastDet else null
-                    }
+                    val mediaImage = imageProxy.image
+                    if (mediaImage != null) {
+                        val rotationDeg = imageProxy.imageInfo.rotationDegrees % 360
+                        val orientedW = if (rotationDeg == 90 || rotationDeg == 270) imageProxy.height else imageProxy.width
+                        val orientedH = if (rotationDeg == 90 || rotationDeg == 270) imageProxy.width else imageProxy.height
 
-                    mainExecutor.execute {
-                        onQrDetected(outDet)
+                        val image = InputImage.fromMediaImage(
+                            mediaImage,
+                            rotationDeg
+                        )
+                        barcodeScanner
+                            .process(image)
+                            .addOnSuccessListener { barcodes ->
+                                val first = barcodes.firstOrNull()
+                                if (first?.rawValue?.isNotEmpty() == true) {
+                                    val pts = first.cornerPoints?.map { Offset(it.x.toFloat(), it.y.toFloat()) }
+                                        ?: first.boundingBox?.let { box ->
+                                            listOf(
+                                                Offset(box.left.toFloat(), box.top.toFloat()),
+                                                Offset(box.right.toFloat(), box.top.toFloat()),
+                                                Offset(box.right.toFloat(), box.bottom.toFloat()),
+                                                Offset(box.left.toFloat(), box.bottom.toFloat())
+                                            )
+                                        } ?: emptyList()
+                                    val det = QrDetection(
+                                        text = first.rawValue!!,
+                                        points = pts,
+                                        imageWidth = orientedW,
+                                        imageHeight = orientedH
+                                    )
+                                    lastDet = det
+                                    lastDetAt.set(SystemClock.elapsedRealtime())
+                                    mainExecutor.execute { onQrDetected(det) }
+                                }
+                            }
+                            .addOnCompleteListener(cameraExecutor) { task ->
+                                // If ML Kit didn’t return anything, fall back to ZXing
+                                if (!(task.isSuccessful && !task.result.isNullOrEmpty())) {
+                                    val det = QrCameraDecoder.decodeFromImageProxy(imageProxy, reader)
+                                    val outDet = if (det != null && det.points.isNotEmpty()) {
+                                        lastDet = det
+                                        lastDetAt.set(SystemClock.elapsedRealtime())
+                                        det
+                                    } else {
+                                        val age = SystemClock.elapsedRealtime() - lastDetAt.get()
+                                        if (age <= holdMs) lastDet else null
+                                    }
+                                    mainExecutor.execute { onQrDetected(outDet) }
+                                }
+                                imageProxy.close()
+                            }
+                    } else {
+                        // No mediaImage -> ZXing fallback
+                        val det = QrCameraDecoder.decodeFromImageProxy(imageProxy, reader)
+                        val outDet = if (det != null && det.points.isNotEmpty()) {
+                            lastDet = det
+                            lastDetAt.set(now)
+                            det
+                        } else {
+                            val age = now - lastDetAt.get()
+                            if (age <= holdMs) lastDet else null
+                        }
+                        mainExecutor.execute { onQrDetected(outDet) }
+                        imageProxy.close()
                     }
-                    imageProxy.close()
                 }
 
                 // UseCaseGroup with ViewPort
@@ -120,6 +189,7 @@ fun CameraQRPreview(
                 onQrDetected(null)
                 cameraProvider?.unbindAll()
                 cameraExecutor.shutdown()
+                barcodeScanner.close()
             } catch (_: Exception) { }
         }
     }
