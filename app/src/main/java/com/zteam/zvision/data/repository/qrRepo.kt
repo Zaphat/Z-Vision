@@ -1,8 +1,13 @@
 package com.zteam.zvision.data.repository
 
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
 import com.zteam.zvision.data.model.QrModel
-import java.util.*
-import androidx.room.*
+import java.util.Date
+import java.util.UUID
 
 @Dao
 interface QrDao {

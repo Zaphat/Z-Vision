@@ -1,17 +1,16 @@
 package com.zteam.zvision.ui.features.qrCreation
 
+import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.zteam.zvision.data.model.QrModel
+import com.zteam.zvision.domain.QrUsecase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import com.zteam.zvision.domain.QrUsecase
-import com.zteam.zvision.data.model.QrModel
-import com.zteam.zvision.ui.features.qrCreation.QRContent
-import com.zteam.zvision.ui.features.qrCreation.QRGenerator
-import android.graphics.Bitmap
-import java.util.*
+import java.util.Date
+import java.util.UUID
 
 class QrCreationViewModel(
     private val usecase: QrUsecase,
