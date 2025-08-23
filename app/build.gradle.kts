@@ -7,18 +7,23 @@ plugins {
 
 android {
     namespace = "com.zteam.zvision"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.zteam.zvision"
         minSdk = 29
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
+        }
+        externalNativeBuild {
+            cmake {
+                arguments += listOf("-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
+            }
         }
     }
 
@@ -70,8 +75,15 @@ dependencies {
     implementation(libs.androidx.foundation)
     implementation(libs.androidx.material)
 
-    implementation("androidx.compose.material:material-icons-extended:<version>")
-
+    implementation(libs.androidx.material.icons.extended)
+    implementation(libs.ui)
+    implementation(libs.androidx.foundation)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.runtime)
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
+    implementation(libs.ui.graphics)
     ksp(libs.androidx.room.compiler)
 
     // Tests

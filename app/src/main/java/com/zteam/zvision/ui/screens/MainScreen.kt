@@ -1,70 +1,72 @@
 // screens/MainScreen.kt
 package com.zteam.zvision.ui.screens
 
-import android.graphics.DashPathEffect
-import android.graphics.Paint
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import android.Manifest
+import android.content.pm.PackageManager
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.compose.foundation.background
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.node.ModifierNodeElement
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.style.TextAlign
+import androidx.core.content.ContextCompat
 import com.zteam.zvision.R
+import com.zteam.zvision.data.model.QrDetection
 import com.zteam.zvision.ui.commons.SettingsPopup
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.platform.LocalContext
-import com.zteam.zvision.ui.features.qrScan.QRDecoder
-import com.zteam.zvision.data.local.AppDatabase
-import com.zteam.zvision.data.repository.QrRepository
-import com.zteam.zvision.domain.QrUsecase
-import com.zteam.zvision.data.model.QrModel
-import kotlinx.coroutines.launch
+import com.zteam.zvision.ui.components.CameraPermissionRequest
+import com.zteam.zvision.ui.components.QrBoundingBoxOverlay
+import com.zteam.zvision.ui.components.QrResultBottomSheet
+import com.zteam.zvision.ui.features.camera.CameraQRPreview
+import com.zteam.zvision.ui.features.image.QRImageDecoder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.Date
-import java.util.UUID
 
 @ExperimentalMaterial3Api
 @Composable
 fun MainScreen(
-    initMode: String,
+    selectingMode: String,
     onModeChange: (String) -> Unit,
     translateFromLanguage: String,
     translateToLanguage: String,
@@ -78,36 +80,19 @@ fun MainScreen(
     var resultText by remember { mutableStateOf("") }
     var copyEnabled by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
-    val clipboard = LocalClipboardManager.current
+
     val pickMedia = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
         if (uri != null) {
             Log.d("PhotoPicker", "Selected URI: $uri")
             scope.launch {
                 val decoded = withContext(Dispatchers.Default) {
-                    QRDecoder.decodeFromUri(context, uri)
+                    QRImageDecoder.decodeFromUri(context, uri)
                 }
                 if (decoded != null) {
-                    // Persist QR in database
-                    withContext(Dispatchers.IO) {
-                        val db = AppDatabase.getInstance(context)
-                        val repo = QrRepository(db.qrDao())
-                        val usecase = QrUsecase(repo)
-                        val name = deriveNameFromContent(decoded)
-                        val qr = QrModel(
-                            id = UUID.randomUUID(),
-                            name = name,
-                            createdAt = Date(),
-                            content = decoded.toByteArray(),
-                            favorite = false
-                        )
-                        usecase.insertQr(qr)
-                    }
-                    // Show result in bottom sheet
                     resultText = decoded
                     copyEnabled = true
                     showResultSheet = true
                 } else {
-                    // Show toast only if no QR is found
                     withContext(Dispatchers.Main) {
                         Toast.makeText(context, "No QR code found in image", Toast.LENGTH_SHORT).show()
                     }
@@ -118,6 +103,25 @@ fun MainScreen(
         }
     }
 
+    // Camera permission state for live preview
+    val hasCameraPermissionInitial = remember {
+        ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+    }
+    var hasCameraPermission by remember { mutableStateOf(hasCameraPermissionInitial) }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasCameraPermission = granted
+        if (!granted) {
+            Toast.makeText(context, "Camera permission is required for live preview", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // State for overlay and preview size
+    var previewSize by remember { mutableStateOf(IntSize.Zero) }
+    var detection by remember { mutableStateOf<QrDetection?>(null) }
+    var lastShownText by remember { mutableStateOf<String?>(null) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -125,46 +129,16 @@ fun MainScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Selection state for bottom mode buttons
-        val isQRSelected = (initMode == "QR")
-        val isTranslateSelected = initMode == "Translate"
+        val isQRSelected = (selectingMode == "QR")
+        val isTranslateSelected = (selectingMode == "Translate")
 
         if (showResultSheet) {
-            ModalBottomSheet(
-                onDismissRequest = { showResultSheet = false },
-                sheetState = sheetState,
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Absolute.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        SelectionContainer(
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(
-                                text = resultText,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.verticalScroll(rememberScrollState())
-                            )
-                        }
-                        if (copyEnabled) {
-                            IconButton(onClick = {
-                                clipboard.setText(AnnotatedString(resultText))
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Filled.ContentCopy,
-                                    contentDescription = "Copy to clipboard"
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+            QrResultBottomSheet(
+                resultText = resultText,
+                copyEnabled = copyEnabled,
+                onDismiss = { showResultSheet = false },
+                sheetState = sheetState
+            )
         }
 
         // Settings header
@@ -176,20 +150,14 @@ fun MainScreen(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (initMode == "Translate") {
+            if (selectingMode == "Translate") {
                 Button(
                     onClick = { onNavigateToLanguageSelection(true) },
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.DarkGray
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text(
-                        text = translateFromLanguage,
-                        color = Color.White,
-                        fontSize = 16.sp
-                    )
+                    Text(text = translateFromLanguage, color = Color.White, fontSize = 16.sp)
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -205,40 +173,14 @@ fun MainScreen(
                 Button(
                     onClick = { onNavigateToLanguageSelection(false) },
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.DarkGray
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text(
-                        text = translateToLanguage,
-                        color = Color.White,
-                        fontSize = 16.sp
-                    )
+                    Text(text = translateToLanguage, color = Color.White, fontSize = 16.sp)
                 }
             }
-            else if (initMode == "QR") {
-                Button (
-                    onClick = {onNavigateToQrStorage()},
-                    modifier = Modifier
-                        .padding(start = 0.dp, end = 105.dp)
-                        .size(width = 100.dp, height = 50.dp),
-                    contentPadding = PaddingValues(0.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.DarkGray
-                    )
-                ){
-                    Text(text = "My QR" ,
-                        color = Color.White,
-                        fontSize = 16.sp
-                    )
-                }
-            }
-
             Box {
-                IconButton(
-                    onClick = { menuExpanded = true }
-                ) {
+                IconButton(onClick = { menuExpanded = true }) {
                     Icon(
                         imageVector = Icons.Default.Menu,
                         contentDescription = "QR More",
@@ -253,21 +195,50 @@ fun MainScreen(
             }
         }
 
-        // Mode text in the center
+        // Main content area
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.75f)
-                .background(Color.Gray),
+                .background(Color.Black),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "Camera Preview for $initMode",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White
-            )
+            if (hasCameraPermission) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .onSizeChanged { previewSize = it }
+                ) {
+                    CameraQRPreview(
+                        modifier = Modifier.fillMaxSize(),
+                        onQrDetected = { det ->
+                            detection = det
+                            det?.let {
+                                // Update the sheet when new content appears or when sheet is hidden
+                                if (lastShownText != it.text || !showResultSheet) {
+                                    resultText = it.text
+                                    copyEnabled = true
+                                    showResultSheet = true
+                                    lastShownText = it.text
+                                }
+                            }
+                        }
+                    )
+                    QrBoundingBoxOverlay(
+                        viewSize = previewSize,
+                        detection = detection
+                    )
+                }
+            } else {
+                CameraPermissionRequest(
+                    onGrantPermission = {
+                        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                )
+            }
         }
 
+        // Gallery, Camera Capture, History buttons
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -278,7 +249,7 @@ fun MainScreen(
         ) {
             Button(
                 onClick = {
-                    if (initMode != "QR") {
+                    if (selectingMode != "QR") {
                         Toast.makeText(context, "TODO: Translate from image not implemented yet", Toast.LENGTH_SHORT).show()
                     } else {
                         pickMedia.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
@@ -288,9 +259,7 @@ fun MainScreen(
                     .padding(start = 35.dp, end = 10.dp)
                     .size(width = 50.dp, height = 50.dp),
                 contentPadding = PaddingValues(0.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.DarkGray
-                )
+                colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.filter_24px),
@@ -300,24 +269,23 @@ fun MainScreen(
                     contentDescription = "gallery_icon",
                 )
             }
-
-            Button(
-                onClick = { openCamera() },
-                modifier = Modifier
-                    .size(width = 70.dp, height = 70.dp),
-                contentPadding = PaddingValues(0.dp),
-                shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.DarkGray
-                )
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.brightness_1_24px),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(10.dp),
-                    contentDescription = "camera_icon",
-                )
+            // Camera capture button
+            if (isTranslateSelected) {
+                Button(
+                    onClick = { openCamera() },
+                    modifier = Modifier.size(width = 70.dp, height = 70.dp),
+                    contentPadding = PaddingValues(0.dp),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.brightness_1_24px),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(10.dp),
+                        contentDescription = "camera_icon",
+                    )
+                }
             }
 
             Button(
@@ -326,9 +294,7 @@ fun MainScreen(
                     .padding(start = 10.dp, end = 35.dp)
                     .size(width = 50.dp, height = 50.dp),
                 contentPadding = PaddingValues(0.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.DarkGray
-                )
+                colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.history_2_24px),
@@ -340,7 +306,7 @@ fun MainScreen(
             }
         }
 
-        // Bottom buttons
+        // QR, Translate, and Create QR buttons
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -398,11 +364,4 @@ fun viewHistoryQRScans() {
 
 fun openCamera() {
     // TODO: Implement camera opening
-}
-
-private fun deriveNameFromContent(content: String, maxLen: Int = 32): String {
-    val trimmed = content.trim()
-    if (trimmed.isEmpty()) return "Scanned QR"
-    val singleLine = trimmed.lineSequence().firstOrNull() ?: trimmed
-    return if (singleLine.length <= maxLen) singleLine else singleLine.take(maxLen - 1) + "…"
 }

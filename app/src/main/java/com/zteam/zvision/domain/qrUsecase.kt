@@ -2,7 +2,8 @@ package com.zteam.zvision.domain
 
 import com.zteam.zvision.data.model.QrModel
 import com.zteam.zvision.data.repository.QrRepository
-import java.util.*
+import java.util.Date
+import java.util.UUID
 
 class QrUsecase(private val repository: QrRepository) {
     suspend fun insertQr(qr: QrModel) = repository.insertQr(qr)

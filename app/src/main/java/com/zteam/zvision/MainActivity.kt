@@ -4,23 +4,25 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.navigation.compose.*
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.zteam.zvision.data.local.AppDatabase
 import com.zteam.zvision.data.repository.QrRepository
 import com.zteam.zvision.domain.QrUsecase
-import kotlinx.coroutines.launch
-import com.zteam.zvision.ui.screens.MainScreen
 import com.zteam.zvision.ui.commons.LanguageChoosingPage
 import com.zteam.zvision.ui.features.qrCreation.QrCreationViewModel
+import com.zteam.zvision.ui.screens.MainScreen
 import com.zteam.zvision.ui.screens.qrCreation.QrCreationScreen
 import com.zteam.zvision.ui.screens.qrCreation.QrStorageScreen
 import com.zteam.zvision.ui.theme.ZVisionTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -28,8 +30,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            ZVisionTheme (){
-                var initMode by remember { mutableStateOf("QR") }
+            ZVisionTheme {
+                var selectingMode by remember { mutableStateOf("QR") }
                 var initTranslateFromLanguage by remember { mutableStateOf("Tiếng Việt") }
                 var initTranslateToLanguage by remember { mutableStateOf("English") }
                 var isNavigating by remember { mutableStateOf(false) }
@@ -51,8 +53,8 @@ class MainActivity : ComponentActivity() {
                 ) {
                     composable("main") {
                         MainScreen(
-                            initMode = initMode,
-                            onModeChange = { initMode = it },
+                            selectingMode = selectingMode,
+                            onModeChange = { selectingMode = it },
                             translateFromLanguage = initTranslateFromLanguage,
                             translateToLanguage = initTranslateToLanguage,
                             onNavigateToLanguageSelection = { isFromLanguage ->
@@ -75,7 +77,7 @@ class MainActivity : ComponentActivity() {
                                     coroutineScope.launch {
                                         try {
                                             navController.navigate("qr_storage")
-                                        } catch (e: Exception) {
+                                        } catch (_: Exception) {
                                             // Handle navigation error
                                         } finally {
                                             isNavigating = false
@@ -141,7 +143,7 @@ class MainActivity : ComponentActivity() {
                                     coroutineScope.launch {
                                         try {
                                             navController.navigate("qr_creation")
-                                        } catch (e: Exception) {
+                                        } catch (_: Exception) {
                                             // Handle navigation error
                                         } finally {
                                             isNavigating = false

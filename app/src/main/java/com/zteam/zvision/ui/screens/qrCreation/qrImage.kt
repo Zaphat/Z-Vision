@@ -1,10 +1,7 @@
 package com.zteam.zvision.ui.screens.qrCreation
 
-import com.zteam.zvision.ui.features.qrCreation.QRContent
-import com.zteam.zvision.ui.features.qrCreation.QRGenerator
-import com.zteam.zvision.ui.features.qrCreation.TextQR
-import com.zteam.zvision.ui.features.qrCreation.UrlQR
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -17,7 +14,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.zteam.zvision.R
-import android.graphics.Color
+import com.zteam.zvision.ui.features.qrCreation.QRContent
+import com.zteam.zvision.ui.features.qrCreation.QRGenerator
+import com.zteam.zvision.ui.features.qrCreation.TextQR
+import com.zteam.zvision.ui.features.qrCreation.UrlQR
 
 @Composable
 fun QRImage(content: QRContent, modifier: Modifier = Modifier, logoPath: String? = null) {

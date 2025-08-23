@@ -1,19 +1,19 @@
 package com.zteam.zvision.ui.features.qrCreation
 
-import android.graphics.Color
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
-import android.graphics.Canvas
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.scale
+import androidx.core.graphics.set
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.WriterException
 import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
-import androidx.core.graphics.set
-import androidx.core.graphics.createBitmap
-import androidx.core.graphics.scale
 
 class QRGenerator() {
 
@@ -98,7 +98,7 @@ class QRGenerator() {
             val qrHeight = qrBitmap.height
 
             val logoSize = (minOf(qrWidth, qrHeight) * LOGO_SIZE_RATIO).toInt()
-            
+
             val resizedLogo = logoBitmap.scale(width = logoSize, height = logoSize, filter = true)
 
             val combined = createBitmap(qrWidth, qrHeight)
@@ -123,7 +123,7 @@ class QRGenerator() {
             canvas.drawRoundRect(backgroundRect, 8f, 8f, backgroundPaint)
 
             canvas.drawBitmap(resizedLogo, logoX, logoY, null)
-            
+
             combined
         } catch (e: Exception) {
             e.printStackTrace()

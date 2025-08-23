@@ -1,6 +1,7 @@
 [versions]
 agp = "8.10.1"
 datastore = "1.1.7"
+materialIconsExtended = "<version>"
 zxingCore = "3.5.3"
 kotlin = "2.2.0"
 coreKtx = "1.16.0"
@@ -16,10 +17,17 @@ roomCompiler = "2.7.2"
 fragment = "1.8.8"
 roomKtxVersion = "2.7.2"
 roomRuntimeVersion = "2.7.2"
+ui = "1.9.0"
+foundation = "1.9.0"
+cameraView = "1.4.2"
+cameraLifecycle = "1.4.2"
+runtime = "1.9.0"
+uiGraphics = "1.9.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-datastore = { module = "androidx.datastore:datastore", version.ref = "datastore" }
+androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxingCore" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -42,6 +50,12 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 androidx-fragment = { group = "androidx.fragment", name = "fragment", version.ref = "fragment" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "roomKtxVersion" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "roomRuntimeVersion" }
+ui = { group = "androidx.compose.ui", name = "ui", version.ref = "ui" }
+androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraView" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraLifecycle" }
+androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "cameraLifecycle" }
+androidx-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
+ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics", version.ref = "uiGraphics" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
