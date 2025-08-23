@@ -165,6 +165,7 @@ fun MainScreen(
                         color = Color.White,
                         fontSize = 16.sp
                     )
+
                 }
             }
             else if (selectingMode == "Translate") {
