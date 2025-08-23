@@ -71,6 +71,12 @@ dependencies {
     implementation(libs.androidx.material)
 
     implementation("androidx.compose.material:material-icons-extended:<version>")
+    implementation(libs.ui)
+    implementation(libs.androidx.foundation)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.runtime)
 
     ksp(libs.androidx.room.compiler)
 

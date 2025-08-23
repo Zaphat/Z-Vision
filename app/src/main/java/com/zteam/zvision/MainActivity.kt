@@ -28,8 +28,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            ZVisionTheme (){
-                var initMode by remember { mutableStateOf("QR") }
+            ZVisionTheme {
+                var selectingMode by remember { mutableStateOf("QR") }
                 var initTranslateFromLanguage by remember { mutableStateOf("Tiếng Việt") }
                 var initTranslateToLanguage by remember { mutableStateOf("English") }
                 var isNavigating by remember { mutableStateOf(false) }
@@ -51,8 +51,8 @@ class MainActivity : ComponentActivity() {
                 ) {
                     composable("main") {
                         MainScreen(
-                            initMode = initMode,
-                            onModeChange = { initMode = it },
+                            selectingMode = selectingMode,
+                            onModeChange = { selectingMode = it },
                             translateFromLanguage = initTranslateFromLanguage,
                             translateToLanguage = initTranslateToLanguage,
                             onNavigateToLanguageSelection = { isFromLanguage ->

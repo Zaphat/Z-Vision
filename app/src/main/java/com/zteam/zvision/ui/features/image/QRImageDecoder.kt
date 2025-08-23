@@ -1,4 +1,4 @@
-package com.zteam.zvision.ui.features.qrScan
+package com.zteam.zvision.ui.features.image
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -9,29 +9,19 @@ import com.google.zxing.common.HybridBinarizer
 import com.google.zxing.qrcode.QRCodeReader
 import com.google.zxing.RGBLuminanceSource
 
-object QRDecoder {
+object QRImageDecoder {
     /**
      * Decode a QR code text from an image [uri]. Returns the decoded text or null if none found.
      */
     fun decodeFromUri(context: Context, uri: Uri): String? {
         return context.contentResolver.openInputStream(uri)?.use { input ->
-            // Downsample large images to avoid OOM
-            val optionsBounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeStream(input, null, optionsBounds)
-            val reqSize = 1200 // target max dimension
-            val sample = calculateInSampleSize(optionsBounds, reqSize, reqSize)
-
-        }.let {
-            // Need a fresh stream to actually decode bitmap
-            context.contentResolver.openInputStream(uri)?.use { input2 ->
-                val options = BitmapFactory.Options().apply { inSampleSize = calculateInSampleSizeForStream(context, uri, 1200, 1200) }
-                val bmp = BitmapFactory.decodeStream(input2, null, options)
-                bmp?.let { bitmap ->
-                    try {
-                        decodeFromBitmap(bitmap)
-                    } finally {
-                        bitmap.recycle()
-                    }
+            val options = BitmapFactory.Options().apply { inSampleSize = calculateInSampleSizeForStream(context, uri) }
+            val bmp = BitmapFactory.decodeStream(input, null, options)
+            bmp?.let { bitmap ->
+                try {
+                    decodeFromBitmap(bitmap)
+                } finally {
+                    bitmap.recycle()
                 }
             }
         }
@@ -50,10 +40,10 @@ object QRDecoder {
         return inSampleSize
     }
 
-    private fun calculateInSampleSizeForStream(context: Context, uri: Uri, reqWidth: Int, reqHeight: Int): Int {
+    private fun calculateInSampleSizeForStream(context: Context, uri: Uri): Int {
         val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts) }
-        return calculateInSampleSize(opts, reqWidth, reqHeight)
+        return calculateInSampleSize(opts, 1200, 1200)
     }
 
     /**
