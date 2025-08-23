@@ -150,7 +150,25 @@ fun MainScreen(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (selectingMode == "Translate") {
+            if (selectingMode == "QR") {
+                Button (
+                    onClick = {onNavigateToQrStorage()},
+                    modifier = Modifier
+                        .padding(start = 0.dp, end = 105.dp)
+                        .size(width = 100.dp, height = 50.dp),
+                    contentPadding = PaddingValues(0.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.DarkGray
+                    )
+                ){
+                    Text(text = "My QR" ,
+                        color = Color.White,
+                        fontSize = 16.sp
+                    )
+
+                }
+            }
+            else if (selectingMode == "Translate") {
                 Button(
                     onClick = { onNavigateToLanguageSelection(true) },
                     modifier = Modifier.weight(1f),
