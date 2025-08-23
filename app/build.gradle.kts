@@ -67,6 +67,9 @@ dependencies {
     implementation(libs.androidx.fragment)
     implementation(libs.room.ktx)
     implementation(libs.room.runtime)
+    implementation(libs.androidx.foundation)
+    implementation(libs.androidx.material)
+
     implementation("androidx.compose.material:material-icons-extended:<version>")
 
     ksp(libs.androidx.room.compiler)
