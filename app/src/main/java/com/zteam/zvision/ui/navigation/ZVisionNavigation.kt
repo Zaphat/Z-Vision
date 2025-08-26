@@ -1,0 +1,138 @@
+package com.zteam.zvision.ui.navigation
+
+import android.net.Uri
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.zteam.zvision.data.local.AppDatabase
+import com.zteam.zvision.data.repository.QrRepository
+import com.zteam.zvision.domain.QrUsecase
+import com.zteam.zvision.ui.commons.LanguageChoosingPage
+import com.zteam.zvision.ui.features.qrCreation.QrCreationViewModel
+import com.zteam.zvision.ui.screens.MainScreen
+import com.zteam.zvision.ui.screens.browser.InAppBrowserScreen
+import com.zteam.zvision.ui.screens.qrCreation.QrCreationScreen
+import com.zteam.zvision.ui.screens.qrCreation.QrStorageScreen
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ZVisionNavigation() {
+    var selectingMode by remember { mutableStateOf("QR") }
+    var initTranslateFromLanguage by remember { mutableStateOf("Tiếng Việt") }
+    var initTranslateToLanguage by remember { mutableStateOf("English") }
+    var isNavigating by remember { mutableStateOf(false) }
+    val navController = rememberNavController()
+    val coroutineScope = rememberCoroutineScope()
+    var browserOpen by remember { mutableStateOf(false) }
+
+    val navigationHelper = remember {
+        NavigationHelper(
+            navController = navController,
+            isNavigating = { isNavigating },
+            setNavigating = { isNavigating = it },
+            coroutineScope = coroutineScope
+        )
+    }
+
+    val openInAppBrowser: (String) -> Unit = { url ->
+        browserOpen = true
+        val encoded = Uri.encode(url)
+        navController.navigate("zv_browser?url=$encoded")
+    }
+
+    NavHost(
+        navController = navController,
+        startDestination = "main"
+    ) {
+        composable("main") {
+            MainScreen(
+                selectingMode = selectingMode,
+                onModeChange = { selectingMode = it },
+                translateFromLanguage = initTranslateFromLanguage,
+                translateToLanguage = initTranslateToLanguage,
+                onNavigateToLanguageSelection = { isFromLanguage ->
+                    navigationHelper.navigateToLanguageSelection(isFromLanguage)
+                },
+                onNavigateToQrStorage = {
+                    navigationHelper.navigateToQrStorage()
+                },
+                onOpenUrl = openInAppBrowser,
+                scanningEnabled = !browserOpen
+            )
+        }
+
+        composable("language_selection/{isFromLanguage}") { backStackEntry ->
+            val isFromLanguage = backStackEntry.arguments?.getString("isFromLanguage")?.toBoolean() ?: true
+            LanguageChoosingPage(
+                isFromLanguage = isFromLanguage,
+                currentFromLanguage = initTranslateFromLanguage,
+                currentToLanguage = initTranslateToLanguage,
+                onLanguageSelected = { language ->
+                    if (isFromLanguage) {
+                        initTranslateFromLanguage = language
+                    } else {
+                        initTranslateToLanguage = language
+                    }
+                    navigationHelper.safePopBack()
+                },
+                onBackPressed = {
+                    navigationHelper.safePopBack()
+                }
+            )
+        }
+
+        composable("qr_creation") {
+            QrCreationScreen(
+                onBack = { navigationHelper.safePopBack() },
+                onNavigateToQrStorage = {
+                    navigationHelper.navigateToQrStorage()
+                }
+            )
+        }
+
+        composable("qr_storage") {
+            val context = LocalContext.current
+            val viewModel = remember {
+                val db = AppDatabase.getInstance(context)
+                val repo = QrRepository(db.qrDao())
+                val usecase = QrUsecase(repo)
+                QrCreationViewModel(usecase)
+            }
+            QrStorageScreen(
+                viewModel = viewModel,
+                onBack = { navigationHelper.safePopBack() },
+                onNavigateToQrCreation = {
+                    navigationHelper.navigateToQrCreation()
+                }
+            )
+        }
+
+        composable(
+            route = "zv_browser?url={url}",
+            arguments = listOf(navArgument("url") { type = NavType.StringType })
+        ) { backStackEntry ->
+            androidx.compose.runtime.DisposableEffect(Unit) {
+                browserOpen = true
+                onDispose { browserOpen = false }
+            }
+            val encodedUrl = backStackEntry.arguments?.getString("url").orEmpty()
+            val targetUrl = Uri.decode(encodedUrl)
+            InAppBrowserScreen(
+                url = targetUrl,
+                onBack = {
+                    navigationHelper.safePopBack()
+                }
+            )
+        }
+    }
+}
