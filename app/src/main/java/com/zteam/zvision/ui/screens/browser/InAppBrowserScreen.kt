@@ -1,8 +1,8 @@
 package com.zteam.zvision.ui.screens.browser
 
-import android.content.Intent
 import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
