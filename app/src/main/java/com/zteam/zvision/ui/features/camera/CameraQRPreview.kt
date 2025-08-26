@@ -118,7 +118,7 @@ fun CameraQRPreview(
                         )
                         barcodeScanner
                             .process(image)
-                            .addOnSuccessListener { barcodes ->
+                            .addOnSuccessListener(mainExecutor) { barcodes ->
                                 val first = barcodes.firstOrNull()
                                 if (first?.rawValue?.isNotEmpty() == true) {
                                     val pts = first.cornerPoints?.map { Offset(it.x.toFloat(), it.y.toFloat()) }
@@ -141,7 +141,7 @@ fun CameraQRPreview(
                                     mainExecutor.execute { onQrDetected(det) }
                                 }
                             }
-                            .addOnCompleteListener(cameraExecutor) { task ->
+                            .addOnCompleteListener(mainExecutor) { task ->
                                 // If ML Kit didn’t return anything, fall back to ZXing
                                 if (!(task.isSuccessful && !task.result.isNullOrEmpty())) {
                                     val det = QrCameraDecoder.decodeFromImageProxy(imageProxy, reader)
