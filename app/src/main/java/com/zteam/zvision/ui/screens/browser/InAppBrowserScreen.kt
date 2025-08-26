@@ -1,6 +1,9 @@
 package com.zteam.zvision.ui.screens.browser
 
 import android.content.Intent
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.net.Uri
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -20,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.net.toUri
 
 @Composable
 fun InAppBrowserScreen(url: String, onBack: () -> Unit) {
@@ -83,7 +87,7 @@ fun InAppBrowserScreen(url: String, onBack: () -> Unit) {
                     flush()
                 }
 
-                webViewClient = createSecureWebViewClient()
+                webViewClient = createSecureWebViewClient(context)
                 webChromeClient = WebChromeClient()
 
                 // Start clean
@@ -104,7 +108,26 @@ fun InAppBrowserScreen(url: String, onBack: () -> Unit) {
     )
 }
 
-private fun createSecureWebViewClient() = object : WebViewClient() {
+// +++ helper to launch intents for non-http(s) schemes
+private fun launchExternalUri(context: Context, uri: Uri) {
+    val scheme = uri.scheme?.lowercase()
+    val baseIntent = when (scheme) {
+        "mailto" -> Intent(Intent.ACTION_SENDTO, uri)
+        "tel" -> Intent(Intent.ACTION_DIAL, uri)
+        "sms", "smsto", "mms", "mmsto" -> Intent(Intent.ACTION_SENDTO, uri)
+        else -> Intent(Intent.ACTION_VIEW, uri)
+    }.apply {
+        addCategory(Intent.CATEGORY_BROWSABLE)
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+    }
+    try {
+        context.startActivity(Intent.createChooser(baseIntent, null))
+    } catch (_: ActivityNotFoundException) {
+        // No matching app installed; ignore
+    }
+}
+
+private fun createSecureWebViewClient(context: Context) = object : WebViewClient() {
     override fun shouldOverrideUrlLoading(
         view: WebView?,
         request: android.webkit.WebResourceRequest?
@@ -112,10 +135,21 @@ private fun createSecureWebViewClient() = object : WebViewClient() {
         val u = request?.url?.toString().orEmpty()
         if (u.startsWith("intent://")) {
             return try {
-                val intent = Intent.parseUri(u, Intent.URI_INTENT_SCHEME)
-                val fallback = intent.getStringExtra("browser_fallback_url")
-                if (!fallback.isNullOrEmpty() && (fallback.startsWith("http://") || fallback.startsWith("https://"))) {
-                    view?.loadUrl(fallback)
+                val intent = Intent.parseUri(u, Intent.URI_INTENT_SCHEME).apply {
+                    addCategory(Intent.CATEGORY_BROWSABLE)
+                    component = null
+                    selector = null
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                try {
+                    context.startActivity(Intent.createChooser(intent, null))
+                } catch (_: ActivityNotFoundException) {
+                    val fallback = intent.getStringExtra("browser_fallback_url")
+                    if (!fallback.isNullOrEmpty() &&
+                        (fallback.startsWith("http://") || fallback.startsWith("https://"))
+                    ) {
+                        view?.loadUrl(fallback)
+                    }
                 }
                 true
             } catch (_: Exception) {
@@ -123,7 +157,11 @@ private fun createSecureWebViewClient() = object : WebViewClient() {
             }
         }
         val scheme = request?.url?.scheme.orEmpty()
-        return scheme !in listOf("http", "https")
+        if (scheme !in listOf("http", "https")) {
+            request?.url?.let { launchExternalUri(context, it) }
+            return true
+        }
+        return false
     }
 
     @Suppress("DEPRECATION")
@@ -131,17 +169,33 @@ private fun createSecureWebViewClient() = object : WebViewClient() {
         val u = url.orEmpty()
         if (u.startsWith("intent://")) {
             return try {
-                val intent = Intent.parseUri(u, Intent.URI_INTENT_SCHEME)
-                val fallback = intent.getStringExtra("browser_fallback_url")
-                if (!fallback.isNullOrEmpty() && (fallback.startsWith("http://") || fallback.startsWith("https://"))) {
-                    view?.loadUrl(fallback)
+                val intent = Intent.parseUri(u, Intent.URI_INTENT_SCHEME).apply {
+                    addCategory(Intent.CATEGORY_BROWSABLE)
+                    component = null
+                    selector = null
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                try {
+                    context.startActivity(Intent.createChooser(intent, null))
+                } catch (_: ActivityNotFoundException) {
+                    val fallback = intent.getStringExtra("browser_fallback_url")
+                    if (!fallback.isNullOrEmpty() &&
+                        (fallback.startsWith("http://") || fallback.startsWith("https://"))
+                    ) {
+                        view?.loadUrl(fallback)
+                    }
                 }
                 true
             } catch (_: Exception) {
                 true
             }
         }
-        if (!(u.startsWith("http://") || u.startsWith("https://"))) return true
+        val uri = try {
+            u.toUri() } catch (_: Exception) { null }
+        if (uri != null && uri.scheme != null && uri.scheme !in listOf("http", "https")) {
+            launchExternalUri(context, uri)
+            return true
+        }
         return false
     }
 }

@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,7 +102,7 @@ fun QrResultBottomSheet(
             }
 
             // Add "Go to link" button for http(s) URLs
-            val canOpenLink = resultText.startsWith("http://") || resultText.startsWith("https://")
+            val canOpenLink = isValidUri(resultText)
             if (canOpenLink && onOpenUrl != null) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
@@ -115,5 +116,14 @@ fun QrResultBottomSheet(
                 }
             }
         }
+    }
+}
+
+fun isValidUri(uriString: String): Boolean {
+    return try {
+        val uri = uriString.toUri()
+        uri.scheme != null && uri.scheme!!.isNotBlank()
+    } catch (_: Exception) {
+        false
     }
 }

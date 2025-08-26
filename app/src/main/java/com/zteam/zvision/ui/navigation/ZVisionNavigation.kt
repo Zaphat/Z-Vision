@@ -1,5 +1,8 @@
 package com.zteam.zvision.ui.navigation
 
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -34,6 +37,7 @@ fun ZVisionNavigation() {
     val navController = rememberNavController()
     val coroutineScope = rememberCoroutineScope()
     var browserOpen by remember { mutableStateOf(false) }
+    val appContext = LocalContext.current
 
     val navigationHelper = remember {
         NavigationHelper(
@@ -44,10 +48,34 @@ fun ZVisionNavigation() {
         )
     }
 
+    fun launchExternalIntent(context: Context, uri: Uri) {
+        val scheme = uri.scheme?.lowercase()
+        val baseIntent = when (scheme) {
+            "mailto" -> Intent(Intent.ACTION_SENDTO, uri)
+            "tel" -> Intent(Intent.ACTION_DIAL, uri)
+            "sms", "smsto", "mms", "mmsto" -> Intent(Intent.ACTION_SENDTO, uri)
+            else -> Intent(Intent.ACTION_VIEW, uri)
+        }.apply {
+            addCategory(Intent.CATEGORY_BROWSABLE)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        try {
+            context.startActivity(Intent.createChooser(baseIntent, null))
+        } catch (_: ActivityNotFoundException) {
+            // No matching app installed; ignore
+        }
+    }
+
     val openInAppBrowser: (String) -> Unit = { url ->
-        browserOpen = true
-        val encoded = Uri.encode(url)
-        navController.navigate("zv_browser?url=$encoded")
+        val uri = runCatching { Uri.parse(url) }.getOrNull()
+        val scheme = uri?.scheme?.lowercase()
+        if (scheme == "http" || scheme == "https") {
+            browserOpen = true
+            val encoded = Uri.encode(url)
+            navController.navigate("zv_browser?url=$encoded")
+        } else if (uri != null) {
+            launchExternalIntent(appContext, uri)
+        }
     }
 
     NavHost(
