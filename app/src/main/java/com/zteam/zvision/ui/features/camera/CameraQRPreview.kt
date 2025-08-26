@@ -4,10 +4,20 @@ import android.os.SystemClock
 import android.util.Log
 import android.util.Rational
 import androidx.annotation.OptIn
-import androidx.camera.core.*
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.Preview
+import androidx.camera.core.UseCaseGroup
+import androidx.camera.core.ViewPort
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
@@ -18,7 +28,9 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
-import com.google.zxing.*
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.DecodeHintType
+import com.google.zxing.MultiFormatReader
 import com.zteam.zvision.data.model.QrDetection
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
@@ -106,7 +118,7 @@ fun CameraQRPreview(
                         )
                         barcodeScanner
                             .process(image)
-                            .addOnSuccessListener { barcodes ->
+                            .addOnSuccessListener(mainExecutor) { barcodes ->
                                 val first = barcodes.firstOrNull()
                                 if (first?.rawValue?.isNotEmpty() == true) {
                                     val pts = first.cornerPoints?.map { Offset(it.x.toFloat(), it.y.toFloat()) }
@@ -129,7 +141,7 @@ fun CameraQRPreview(
                                     mainExecutor.execute { onQrDetected(det) }
                                 }
                             }
-                            .addOnCompleteListener(cameraExecutor) { task ->
+                            .addOnCompleteListener(mainExecutor) { task ->
                                 // If ML Kit didn’t return anything, fall back to ZXing
                                 if (!(task.isSuccessful && !task.result.isNullOrEmpty())) {
                                     val det = QrCameraDecoder.decodeFromImageProxy(imageProxy, reader)

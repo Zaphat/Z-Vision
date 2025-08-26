@@ -2,7 +2,10 @@ package com.zteam.zvision.ui.features.camera
 
 import androidx.camera.core.ImageProxy
 import androidx.compose.ui.geometry.Offset
-import com.google.zxing.*
+import com.google.zxing.BinaryBitmap
+import com.google.zxing.MultiFormatReader
+import com.google.zxing.NotFoundException
+import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import com.zteam.zvision.data.model.QrDetection
 import java.nio.ByteBuffer

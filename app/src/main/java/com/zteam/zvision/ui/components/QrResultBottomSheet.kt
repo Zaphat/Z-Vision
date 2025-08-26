@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,6 +20,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,7 +44,8 @@ fun QrResultBottomSheet(
     resultText: String,
     copyEnabled: Boolean,
     onDismiss: () -> Unit,
-    sheetState: SheetState
+    sheetState: SheetState,
+    onOpenUrl: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
@@ -96,6 +100,30 @@ fun QrResultBottomSheet(
                     )
                 }
             }
+
+            // Add "Go to link" button for http(s) URLs
+            val canOpenLink = isValidUri(resultText)
+            if (canOpenLink && onOpenUrl != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = {
+                        onDismiss()
+                        onOpenUrl(resultText)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Go to link")
+                }
+            }
         }
+    }
+}
+
+fun isValidUri(uriString: String): Boolean {
+    return try {
+        val uri = uriString.toUri()
+        uri.scheme != null && uri.scheme!!.isNotBlank()
+    } catch (_: Exception) {
+        false
     }
 }

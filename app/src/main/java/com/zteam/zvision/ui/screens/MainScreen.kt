@@ -16,13 +16,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -71,7 +73,9 @@ fun MainScreen(
     translateFromLanguage: String,
     translateToLanguage: String,
     onNavigateToLanguageSelection: (Boolean) -> Unit,
-    onNavigateToQrStorage: () -> Unit
+    onNavigateToQrStorage: () -> Unit,
+    onOpenUrl: (String) -> Unit,
+    scanningEnabled: Boolean
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -82,6 +86,7 @@ fun MainScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
     val pickMedia = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
+        if (!scanningEnabled) return@rememberLauncherForActivityResult
         if (uri != null) {
             Log.d("PhotoPicker", "Selected URI: $uri")
             scope.launch {
@@ -125,6 +130,7 @@ fun MainScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing)
             .background(Color.Black),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -137,7 +143,8 @@ fun MainScreen(
                 resultText = resultText,
                 copyEnabled = copyEnabled,
                 onDismiss = { showResultSheet = false },
-                sheetState = sheetState
+                sheetState = sheetState,
+                onOpenUrl = onOpenUrl
             )
         }
 
@@ -145,7 +152,6 @@ fun MainScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
                 .padding(start = 8.dp, bottom = 8.dp, top = 8.dp),
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
@@ -221,7 +227,7 @@ fun MainScreen(
                 .background(Color.Black),
             contentAlignment = Alignment.Center
         ) {
-            if (hasCameraPermission) {
+            if (hasCameraPermission && scanningEnabled) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -247,12 +253,15 @@ fun MainScreen(
                         detection = detection
                     )
                 }
-            } else {
+            } else if (!hasCameraPermission) {
                 CameraPermissionRequest(
                     onGrantPermission = {
                         cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                     }
                 )
+            } else {
+                // Scanning disabled (browser open): show nothing to ensure analyzers are stopped
+                Box(modifier = Modifier.fillMaxSize())
             }
         }
 
@@ -270,7 +279,9 @@ fun MainScreen(
                     if (selectingMode != "QR") {
                         Toast.makeText(context, "TODO: Translate from image not implemented yet", Toast.LENGTH_SHORT).show()
                     } else {
-                        pickMedia.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
+                        if (scanningEnabled) {
+                            pickMedia.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
+                        }
                     }
                 },
                 modifier = Modifier
