@@ -88,6 +88,7 @@ dependencies {
     implementation(libs.mlkit.translate)
     implementation(libs.mlkit.language.id)
     implementation(libs.ui.graphics)
+    implementation("com.google.mlkit:text-recognition:16.0.1")
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.hilt.android)
