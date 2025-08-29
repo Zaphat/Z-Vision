@@ -1,6 +1,7 @@
 // screens/MainScreen.kt
 package com.zteam.zvision.ui.screens
 
+import android.content.res.Resources
 import android.graphics.DashPathEffect
 import android.graphics.Paint
 import androidx.compose.foundation.BorderStroke
@@ -16,7 +17,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -27,22 +27,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.style.TextAlign
 import com.zteam.zvision.R
 import com.zteam.zvision.ui.commons.SettingsPopup
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -121,7 +111,7 @@ fun MainScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(MaterialTheme.colorScheme.background),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Selection state for bottom mode buttons
@@ -157,8 +147,9 @@ fun MainScreen(
                                 clipboard.setText(AnnotatedString(resultText))
                             }) {
                                 Icon(
-                                    imageVector = Icons.Filled.ContentCopy,
-                                    contentDescription = "Copy to clipboard"
+                                    painter = painterResource(id = R.drawable.content_copy_24px),
+                                    contentDescription = "Copy to clipboard",
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer // 👈 makes it follow your theme
                                 )
                             }
                         }
@@ -181,13 +172,13 @@ fun MainScreen(
                     onClick = { onNavigateToLanguageSelection(true) },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.DarkGray
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
                     ),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
                         text = translateFromLanguage,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontSize = 16.sp
                     )
                 }
@@ -197,7 +188,7 @@ fun MainScreen(
                 Icon(
                     painter = painterResource(id = R.drawable.arrow_forward_24px),
                     contentDescription = "Translate Arrow",
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.primaryContainer,
                 )
 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -206,13 +197,13 @@ fun MainScreen(
                     onClick = { onNavigateToLanguageSelection(false) },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.DarkGray
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
                     ),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
                         text = translateToLanguage,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontSize = 16.sp
                     )
                 }
@@ -225,11 +216,11 @@ fun MainScreen(
                         .size(width = 100.dp, height = 50.dp),
                     contentPadding = PaddingValues(0.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.DarkGray
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
                     )
                 ){
                     Text(text = "My QR" ,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontSize = 16.sp
                     )
                 }
@@ -242,7 +233,7 @@ fun MainScreen(
                     Icon(
                         imageVector = Icons.Default.Menu,
                         contentDescription = "QR More",
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.primaryContainer,
                     )
                 }
 
@@ -289,7 +280,7 @@ fun MainScreen(
                     .size(width = 50.dp, height = 50.dp),
                 contentPadding = PaddingValues(0.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.DarkGray
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
             ) {
                 Icon(
@@ -298,6 +289,7 @@ fun MainScreen(
                         .fillMaxSize()
                         .padding(8.dp),
                     contentDescription = "gallery_icon",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
 
@@ -308,7 +300,7 @@ fun MainScreen(
                 contentPadding = PaddingValues(0.dp),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.DarkGray
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
             ) {
                 Icon(
@@ -317,6 +309,7 @@ fun MainScreen(
                         .fillMaxSize()
                         .padding(10.dp),
                     contentDescription = "camera_icon",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
 
@@ -327,7 +320,7 @@ fun MainScreen(
                     .size(width = 50.dp, height = 50.dp),
                 contentPadding = PaddingValues(0.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.DarkGray
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
             ) {
                 Icon(
@@ -336,6 +329,7 @@ fun MainScreen(
                         .fillMaxSize()
                         .padding(8.dp),
                     contentDescription = "history_icon",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
         }
@@ -354,8 +348,8 @@ fun MainScreen(
                     .size(width = 100.dp, height = 50.dp),
                 contentPadding = PaddingValues(8.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isQRSelected) MaterialTheme.colorScheme.primary else Color.DarkGray,
-                    contentColor = if (isQRSelected) MaterialTheme.colorScheme.onPrimary else Color.White
+                    containerColor = if (isQRSelected) MaterialTheme.colorScheme.primaryContainer else Color.DarkGray,
+                    contentColor = if (isQRSelected) MaterialTheme.colorScheme.onPrimaryContainer else Color.White
                 ),
                 elevation = if (isQRSelected) ButtonDefaults.buttonElevation(defaultElevation = 6.dp) else ButtonDefaults.buttonElevation(
                     defaultElevation = 0.dp
@@ -364,7 +358,8 @@ fun MainScreen(
                 Icon(
                     painter = painterResource(id = R.drawable.qr_code_24px),
                     contentDescription = "QR More",
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
             Button(
@@ -374,7 +369,7 @@ fun MainScreen(
                     .size(width = 100.dp, height = 50.dp),
                 contentPadding = PaddingValues(8.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isTranslateSelected) MaterialTheme.colorScheme.primary else Color.DarkGray,
+                    containerColor = if (isTranslateSelected) MaterialTheme.colorScheme.primaryContainer else Color.DarkGray,
                     contentColor = if (isTranslateSelected) MaterialTheme.colorScheme.onPrimary else Color.White
                 ),
                 elevation = if (isTranslateSelected) ButtonDefaults.buttonElevation(defaultElevation = 6.dp) else ButtonDefaults.buttonElevation(
@@ -384,7 +379,8 @@ fun MainScreen(
                 Icon(
                     painter = painterResource(id = R.drawable.g_translate_24px),
                     contentDescription = "QR More",
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
         }

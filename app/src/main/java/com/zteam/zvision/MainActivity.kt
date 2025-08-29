@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            ZVisionTheme (){
+            ZVisionTheme (dynamicColor = false){
                 var initMode by remember { mutableStateOf("QR") }
                 var initTranslateFromLanguage by remember { mutableStateOf("Tiếng Việt") }
                 var initTranslateToLanguage by remember { mutableStateOf("English") }
