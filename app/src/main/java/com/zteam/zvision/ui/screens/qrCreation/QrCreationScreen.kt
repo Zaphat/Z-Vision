@@ -15,19 +15,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -35,31 +36,33 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import com.zteam.zvision.appDataStore
 import com.zteam.zvision.data.local.AppDatabase
 import com.zteam.zvision.data.repository.QrRepository
 import com.zteam.zvision.domain.QrUsecase
 import com.zteam.zvision.ui.features.qrCreation.QRGenerator
 import com.zteam.zvision.ui.features.qrCreation.QrCreationViewModel
 import com.zteam.zvision.ui.features.qrCreation.TextQR
+import kotlinx.coroutines.flow.first
 import java.io.ByteArrayOutputStream
+
+private val KEY_QR_DEFAULT_FAVORITE = booleanPreferencesKey("qr_default_favorite")
 
 @Composable
 fun QrCreationScreen(
-    onBack: () -> Unit = {},
     onNavigateToQrStorage: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -70,13 +73,10 @@ fun QrCreationScreen(
         val usecase = QrUsecase(repo)
         QrCreationViewModel(usecase)
     }
-    val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf("URL") }
     var content by remember { mutableStateOf("") }
     var favorite by remember { mutableStateOf(false) }
     var showToast by remember { mutableStateOf<String?>(null) }
-    val generatedBitmap by viewModel.generatedBitmap.collectAsState()
 
     // Logo selection state
     var selectedLogoUri by remember { mutableStateOf<Uri?>(null) }
@@ -94,20 +94,38 @@ fun QrCreationScreen(
         finalQrBitmap = null // reset preview when logo changes
         if (uri != null) {
             selectedLogoBitmap = decodeBitmapFromUri(context, uri)
-            if (selectedLogoBitmap != null) {
-                showToast =
-                    "Logo selected: ${selectedLogoBitmap!!.width}x${selectedLogoBitmap!!.height}"
+            showToast = if (selectedLogoBitmap != null) {
+                "Logo selected: ${selectedLogoBitmap!!.width}x${selectedLogoBitmap!!.height}"
             } else {
-                showToast = "Failed to load logo image"
+                "Failed to load logo image"
             }
         } else {
             selectedLogoBitmap = null
         }
     }
 
+    // Restore default favorite
+    LaunchedEffect(Unit) {
+        favorite = context.appDataStore.data.first()[KEY_QR_DEFAULT_FAVORITE] ?: false
+    }
+
+    // Persist whenever favorite changes
+    LaunchedEffect(favorite) {
+        context.appDataStore.edit { it[KEY_QR_DEFAULT_FAVORITE] = favorite }
+    }
+
+    // Responsive sizing for preview
+    val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val screenW = with(density) { windowInfo.containerSize.width.toDp() }
+    val screenH = with(density) { windowInfo.containerSize.height.toDp() }
+    val base = minOf(screenW, screenH)
+    val previewSize = (base * 0.5f).coerceIn(180.dp, 320.dp)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing)
             .imePadding()
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -150,8 +168,8 @@ fun QrCreationScreen(
             if (selectedLogoUri != null) {
                 AssistChip(
                     onClick = {
-                        selectedLogoUri = null;
-                        selectedLogoBitmap = null;
+                        selectedLogoUri = null
+                        selectedLogoBitmap = null
                         finalQrBitmap = null
                     },
                     label = { Text("Clear logo") },
@@ -248,15 +266,15 @@ fun QrCreationScreen(
             Image(
                 bitmap = finalQrBitmap!!.asImageBitmap(),
                 contentDescription = "Generated QR",
-                modifier = Modifier.size(200.dp)
+                modifier = Modifier.size(previewSize)
             )
         } else {
             Box(
                 modifier = Modifier
-                    .size(200.dp) // makes it square
+                    .size(previewSize)
                     .border(
                         width = 2.dp,
-                        color = Color.Black,
+                        color = MaterialTheme.colorScheme.outline,
                     )
             )
         }
@@ -314,34 +332,16 @@ fun QrCreationScreen(
     }
 }
 
-@Composable
-private fun DropdownMenuBox(selected: String, onTypeChange: (String) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        Button(onClick = { expanded = true }) {
-            Text(selected)
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(text = { Text("URL") }, onClick = {
-                onTypeChange("URL"); expanded = false
-            })
-            DropdownMenuItem(text = { Text("Text") }, onClick = {
-                onTypeChange("Text"); expanded = false
-            })
-        }
-    }
-}
-
 private fun ensureCompatibleBitmap(bitmap: Bitmap): Bitmap {
     return when (bitmap.config) {
-        android.graphics.Bitmap.Config.HARDWARE -> {
-            val compatibleBitmap = bitmap.copy(android.graphics.Bitmap.Config.ARGB_8888, true)
+        Bitmap.Config.HARDWARE -> {
+            val compatibleBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
             bitmap.recycle()
             compatibleBitmap
         }
 
-        android.graphics.Bitmap.Config.RGB_565 -> {
-            val compatibleBitmap = bitmap.copy(android.graphics.Bitmap.Config.ARGB_8888, true)
+        Bitmap.Config.RGB_565 -> {
+            val compatibleBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
             bitmap.recycle()
             compatibleBitmap
         }

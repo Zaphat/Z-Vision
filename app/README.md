@@ -18,6 +18,15 @@ This module:
 - Manages the global app state and user preferences
 - Coordinates feature modules without direct dependencies between them
 
+## Theming
+
+- Standardized 5-color palette per mode:
+  - primary, secondary, tertiary, background, surface
+- Central theme controller with tri-mode:
+  - System, Light, Dark
+- Switch modes from the Settings drawer (Appearance section).
+- Dynamic color is supported (Android 12+) but disabled by default to keep branding consistent.
+
 ## Guidelines
 
 - Keep this module lightweight

@@ -12,11 +12,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.zteam.zvision.appDataStore
 import com.zteam.zvision.data.local.AppDatabase
 import com.zteam.zvision.data.repository.QrRepository
 import com.zteam.zvision.domain.QrUsecase
@@ -26,6 +30,11 @@ import com.zteam.zvision.ui.screens.MainScreen
 import com.zteam.zvision.ui.screens.browser.InAppBrowserScreen
 import com.zteam.zvision.ui.screens.qrCreation.QrCreationScreen
 import com.zteam.zvision.ui.screens.qrCreation.QrStorageScreen
+import kotlinx.coroutines.flow.first
+
+private val KEY_SELECTING_MODE = stringPreferencesKey("selecting_mode")
+private val KEY_LANG_FROM = stringPreferencesKey("translate_from_lang")
+private val KEY_LANG_TO = stringPreferencesKey("translate_to_lang")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,7 +76,7 @@ fun ZVisionNavigation() {
     }
 
     val openInAppBrowser: (String) -> Unit = { url ->
-        val uri = runCatching { Uri.parse(url) }.getOrNull()
+        val uri = runCatching { url.toUri() }.getOrNull()
         val scheme = uri?.scheme?.lowercase()
         if (scheme == "http" || scheme == "https") {
             browserOpen = true
@@ -76,6 +85,25 @@ fun ZVisionNavigation() {
         } else if (uri != null) {
             launchExternalIntent(appContext, uri)
         }
+    }
+
+    // Restore persisted values
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        val prefs = appContext.appDataStore.data.first()
+        selectingMode = prefs[KEY_SELECTING_MODE] ?: selectingMode
+        initTranslateFromLanguage = prefs[KEY_LANG_FROM] ?: initTranslateFromLanguage
+        initTranslateToLanguage = prefs[KEY_LANG_TO] ?: initTranslateToLanguage
+    }
+
+    // Persist on change
+    androidx.compose.runtime.LaunchedEffect(selectingMode) {
+        appContext.appDataStore.edit { it[KEY_SELECTING_MODE] = selectingMode }
+    }
+    androidx.compose.runtime.LaunchedEffect(initTranslateFromLanguage) {
+        appContext.appDataStore.edit { it[KEY_LANG_FROM] = initTranslateFromLanguage }
+    }
+    androidx.compose.runtime.LaunchedEffect(initTranslateToLanguage) {
+        appContext.appDataStore.edit { it[KEY_LANG_TO] = initTranslateToLanguage }
     }
 
     NavHost(
@@ -121,7 +149,6 @@ fun ZVisionNavigation() {
 
         composable("qr_creation") {
             QrCreationScreen(
-                onBack = { navigationHelper.safePopBack() },
                 onNavigateToQrStorage = {
                     navigationHelper.navigateToQrStorage()
                 }

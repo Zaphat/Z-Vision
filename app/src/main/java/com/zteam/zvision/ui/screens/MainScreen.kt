@@ -20,10 +20,10 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,11 +31,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -45,7 +47,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -55,7 +56,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.zteam.zvision.R
 import com.zteam.zvision.data.model.QrDetection
-import com.zteam.zvision.ui.commons.SettingsPopup
+import com.zteam.zvision.ui.commons.SettingsDrawer
 import com.zteam.zvision.ui.components.CameraPermissionRequest
 import com.zteam.zvision.ui.components.QrBoundingBoxOverlay
 import com.zteam.zvision.ui.components.QrResultBottomSheet
@@ -77,7 +78,6 @@ fun MainScreen(
     onOpenUrl: (String) -> Unit,
     scanningEnabled: Boolean
 ) {
-    var menuExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var showResultSheet by remember { mutableStateOf(false) }
@@ -127,260 +127,279 @@ fun MainScreen(
     var detection by remember { mutableStateOf<QrDetection?>(null) }
     var lastShownText by remember { mutableStateOf<String?>(null) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-            .background(Color.Black),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+
+    // Responsive sizing (single source of truth)
+    val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val screenW = with(density) { windowInfo.containerSize.width.toDp() }
+    val screenH = with(density) { windowInfo.containerSize.height.toDp() }
+    val base = minOf(screenW, screenH)
+    val horizonPad = (screenW * 0.04f).coerceIn(8.dp, 24.dp)
+    val smallBtnSize = (base * 0.08f).coerceIn(44.dp, 72.dp)      // square small buttons
+    val mediumBtnSize = (base * 0.10f).coerceIn(56.dp, 96.dp)     // camera capture
+    val wideBtnWidth = (screenW * 0.28f).coerceIn(96.dp, 160.dp)  // mode and top buttons width
+    val wideBtnHeight = (base * 0.07f).coerceIn(40.dp, 64.dp)
+    val iconOnlyPadding = (smallBtnSize * 0.16f)
+    val headerIconSize = (base * 0.08f).coerceIn(24.dp, 40.dp)
+    val bottomIconPadding = (mediumBtnSize * 0.14f)
+
+    SettingsDrawer(
+        drawerState = drawerState
     ) {
-        // Selection state for bottom mode buttons
-        val isQRSelected = (selectingMode == "QR")
-        val isTranslateSelected = (selectingMode == "Translate")
-
-        if (showResultSheet) {
-            QrResultBottomSheet(
-                resultText = resultText,
-                copyEnabled = copyEnabled,
-                onDismiss = { showResultSheet = false },
-                sheetState = sheetState,
-                onOpenUrl = onOpenUrl
-            )
-        }
-
-        // Settings header
-        Row(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 8.dp, bottom = 8.dp, top = 8.dp),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .background(MaterialTheme.colorScheme.background),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            if (selectingMode == "QR") {
-                Button (
-                    onClick = {onNavigateToQrStorage()},
-                    modifier = Modifier
-                        .padding(start = 0.dp, end = 105.dp)
-                        .size(width = 100.dp, height = 50.dp),
-                    contentPadding = PaddingValues(0.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.DarkGray
-                    )
-                ){
-                    Text(text = "My QR" ,
-                        color = Color.White,
-                        fontSize = 16.sp
-                    )
+            // Selection state for bottom mode buttons
+            val isQRSelected = (selectingMode == "QR")
+            val isTranslateSelected = (selectingMode == "Translate")
 
-                }
-            }
-            else if (selectingMode == "Translate") {
-                Button(
-                    onClick = { onNavigateToLanguageSelection(true) },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(text = translateFromLanguage, color = Color.White, fontSize = 16.sp)
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Icon(
-                    painter = painterResource(id = R.drawable.arrow_forward_24px),
-                    contentDescription = "Translate Arrow",
-                    tint = Color.White,
+            if (showResultSheet) {
+                QrResultBottomSheet(
+                    resultText = resultText,
+                    copyEnabled = copyEnabled,
+                    onDismiss = { showResultSheet = false },
+                    sheetState = sheetState,
+                    onOpenUrl = onOpenUrl
                 )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Button(
-                    onClick = { onNavigateToLanguageSelection(false) },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(text = translateToLanguage, color = Color.White, fontSize = 16.sp)
-                }
             }
-            Box {
-                IconButton(onClick = { menuExpanded = true }) {
+
+            // Settings header: use SpaceBetween and responsive sizes
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = horizonPad, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                when (selectingMode) {
+                    "QR" -> {
+                        Button(
+                            onClick = { onNavigateToQrStorage() },
+                            modifier = Modifier.size(width = wideBtnWidth, height = wideBtnHeight),
+                            contentPadding = PaddingValues(0.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Text(
+                                text = "My QR",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+                    "Translate" -> {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { onNavigateToLanguageSelection(true) },
+                                modifier = Modifier.weight(1f).height(wideBtnHeight),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                            ) {
+                                Text(text = translateFromLanguage, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp)
+                            }
+
+                            Icon(
+                                painter = painterResource(id = R.drawable.arrow_forward_24px),
+                                contentDescription = "Translate Arrow",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(headerIconSize)
+                            )
+
+                            Button(
+                                onClick = { onNavigateToLanguageSelection(false) },
+                                modifier = Modifier.weight(1f).height(wideBtnHeight),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                            ) {
+                                Text(text = translateToLanguage, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp)
+                            }
+                        }
+                    }
+                    else -> {
+                        Spacer(Modifier.weight(1f))
+                    }
+                }
+
+                IconButton(onClick = { scope.launch { drawerState.open() } }) {
                     Icon(
                         imageVector = Icons.Default.Menu,
                         contentDescription = "QR More",
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(headerIconSize)
                     )
                 }
-
-                SettingsPopup(
-                    expanded = menuExpanded,
-                    onDismiss = { menuExpanded = false }
-                )
             }
-        }
 
-        // Main content area
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.75f)
-                .background(Color.Black),
-            contentAlignment = Alignment.Center
-        ) {
-            if (hasCameraPermission && scanningEnabled) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .onSizeChanged { previewSize = it }
-                ) {
-                    CameraQRPreview(
-                        modifier = Modifier.fillMaxSize(),
-                        onQrDetected = { det ->
-                            detection = det
-                            det?.let {
-                                // Update the sheet when new content appears or when sheet is hidden
-                                if (lastShownText != it.text || !showResultSheet) {
-                                    resultText = it.text
-                                    copyEnabled = true
-                                    showResultSheet = true
-                                    lastShownText = it.text
-                                }
-                            }
-                        }
-                    )
-                    QrBoundingBoxOverlay(
-                        viewSize = previewSize,
-                        detection = detection
-                    )
-                }
-            } else if (!hasCameraPermission) {
-                CameraPermissionRequest(
-                    onGrantPermission = {
-                        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                    }
-                )
-            } else {
-                // Scanning disabled (browser open): show nothing to ensure analyzers are stopped
-                Box(modifier = Modifier.fillMaxSize())
-            }
-        }
-
-        // Gallery, Camera Capture, History buttons
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.5f)
-                .padding(6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Button(
-                onClick = {
-                    if (selectingMode != "QR") {
-                        Toast.makeText(context, "TODO: Translate from image not implemented yet", Toast.LENGTH_SHORT).show()
-                    } else {
-                        if (scanningEnabled) {
-                            pickMedia.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
-                        }
-                    }
-                },
+            // Main content area
+            Box(
                 modifier = Modifier
-                    .padding(start = 35.dp, end = 10.dp)
-                    .size(width = 50.dp, height = 50.dp),
-                contentPadding = PaddingValues(0.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.75f)
+                    .background(MaterialTheme.colorScheme.background),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.filter_24px),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp),
-                    contentDescription = "gallery_icon",
-                )
-            }
-            // Camera capture button
-            if (isTranslateSelected) {
-                Button(
-                    onClick = { openCamera() },
-                    modifier = Modifier.size(width = 70.dp, height = 70.dp),
-                    contentPadding = PaddingValues(0.dp),
-                    shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.brightness_1_24px),
+                if (hasCameraPermission && scanningEnabled) {
+                    Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(10.dp),
-                        contentDescription = "camera_icon",
+                            .onSizeChanged { previewSize = it }
+                    ) {
+                        CameraQRPreview(
+                            modifier = Modifier.fillMaxSize(),
+                            onQrDetected = { det ->
+                                detection = det
+                                det?.let {
+                                    // Update the sheet when new content appears or when sheet is hidden
+                                    if (lastShownText != it.text || !showResultSheet) {
+                                        resultText = it.text
+                                        copyEnabled = true
+                                        showResultSheet = true
+                                        lastShownText = it.text
+                                    }
+                                }
+                            }
+                        )
+                        QrBoundingBoxOverlay(
+                            viewSize = previewSize,
+                            detection = detection
+                        )
+                    }
+                } else if (!hasCameraPermission) {
+                    CameraPermissionRequest(
+                        onGrantPermission = {
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
+                    )
+                } else {
+                    // Scanning disabled (browser open): show nothing to ensure analyzers are stopped
+                    Box(modifier = Modifier.fillMaxSize())
+                }
+            }
+
+            // Gallery, Camera Capture, History buttons (responsive)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.5f)
+                    .padding(horizonPad / 2),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Button(
+                    onClick = {
+                        if (selectingMode != "QR") {
+                            Toast.makeText(context, "TODO: Translate from image not implemented yet", Toast.LENGTH_SHORT).show()
+                        } else {
+                            if (scanningEnabled) {
+                                pickMedia.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
+                            }
+                        }
+                    },
+                    modifier = Modifier.size(smallBtnSize),
+                    contentPadding = PaddingValues(0.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.filter_24px),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(iconOnlyPadding),
+                        contentDescription = "gallery_icon",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                if (isTranslateSelected) {
+                    Button(
+                        onClick = { openCamera() },
+                        modifier = Modifier.size(mediumBtnSize),
+                        contentPadding = PaddingValues(0.dp),
+                        shape = CircleShape,
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.brightness_1_24px),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottomIconPadding),
+                            contentDescription = "camera_icon",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                Button(
+                    onClick = { viewHistoryQRScans() },
+                    modifier = Modifier.size(smallBtnSize),
+                    contentPadding = PaddingValues(0.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.history_2_24px),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(iconOnlyPadding),
+                        contentDescription = "history_icon",
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
 
-            Button(
-                onClick = { viewHistoryQRScans() },
+            // Bottom mode buttons (responsive)
+            Row(
                 modifier = Modifier
-                    .padding(start = 10.dp, end = 35.dp)
-                    .size(width = 50.dp, height = 50.dp),
-                contentPadding = PaddingValues(0.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                    .fillMaxSize()
+                    .padding(horizonPad / 2),
+                horizontalArrangement = Arrangement.SpaceAround,
             ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.history_2_24px),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp),
-                    contentDescription = "history_icon",
-                )
-            }
-        }
-
-        // QR, Translate, and Create QR buttons
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(6.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Button(
-                onClick = { onModeChange("QR") },
-                modifier = Modifier
-                    .padding(start = 35.dp, end = 5.dp)
-                    .size(width = 100.dp, height = 50.dp),
-                contentPadding = PaddingValues(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isQRSelected) MaterialTheme.colorScheme.primary else Color.DarkGray,
-                    contentColor = if (isQRSelected) MaterialTheme.colorScheme.onPrimary else Color.White
-                ),
-                elevation = if (isQRSelected) ButtonDefaults.buttonElevation(defaultElevation = 6.dp) else ButtonDefaults.buttonElevation(
-                    defaultElevation = 0.dp
-                )
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.qr_code_24px),
-                    contentDescription = "QR More",
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            Button(
-                onClick = { onModeChange("Translate") },
-                modifier = Modifier
-                    .padding(start = 5.dp, end = 35.dp)
-                    .size(width = 100.dp, height = 50.dp),
-                contentPadding = PaddingValues(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isTranslateSelected) MaterialTheme.colorScheme.primary else Color.DarkGray,
-                    contentColor = if (isTranslateSelected) MaterialTheme.colorScheme.onPrimary else Color.White
-                ),
-                elevation = if (isTranslateSelected) ButtonDefaults.buttonElevation(defaultElevation = 6.dp) else ButtonDefaults.buttonElevation(
-                    defaultElevation = 0.dp
-                )
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.g_translate_24px),
-                    contentDescription = "QR More",
-                    modifier = Modifier.fillMaxSize()
-                )
+                Button(
+                    onClick = { onModeChange("QR") },
+                    modifier = Modifier.size(width = wideBtnWidth, height = wideBtnHeight),
+                    contentPadding = PaddingValues(iconOnlyPadding),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isQRSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = if (isQRSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                    ),
+                    elevation = if (isQRSelected) ButtonDefaults.buttonElevation(defaultElevation = 6.dp) else ButtonDefaults.buttonElevation(
+                        defaultElevation = 0.dp
+                    )
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.qr_code_24px),
+                        contentDescription = "QR More",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                Button(
+                    onClick = { onModeChange("Translate") },
+                    modifier = Modifier.size(width = wideBtnWidth, height = wideBtnHeight),
+                    contentPadding = PaddingValues(iconOnlyPadding),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isTranslateSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = if (isTranslateSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                    ),
+                    elevation = if (isTranslateSelected) ButtonDefaults.buttonElevation(defaultElevation = 6.dp) else ButtonDefaults.buttonElevation(
+                        defaultElevation = 0.dp
+                    )
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.g_translate_24px),
+                        contentDescription = "QR More",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
         }
     }

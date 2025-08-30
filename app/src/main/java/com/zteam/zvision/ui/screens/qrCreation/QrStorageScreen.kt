@@ -47,13 +47,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import com.zteam.zvision.appDataStore
 import com.zteam.zvision.data.model.QrModel
 import com.zteam.zvision.ui.features.qrCreation.QrCreationViewModel
+import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.Locale
+
+private val KEY_QR_FILTER_NAME = stringPreferencesKey("qr_filter_name")
+private val KEY_QR_ONLY_FAV = booleanPreferencesKey("qr_show_only_fav")
 
 @Composable
 fun QrStorageScreen(
@@ -62,10 +73,37 @@ fun QrStorageScreen(
     onNavigateToQrCreation: () -> Unit = {},
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val context = LocalContext.current
+
+    // Responsive sizing
+    val windowInfo = LocalWindowInfo.current
+    val density = LocalDensity.current
+    val screenW = with(density) { windowInfo.containerSize.width.toDp() }
+    val screenH = with(density) { windowInfo.containerSize.height.toDp() }
+    val base = minOf(screenW, screenH)
+    val thumbSize = (screenW * 0.18f).coerceIn(48.dp, 96.dp)
+    val navIconSize = (base * 0.09f).coerceIn(36.dp, 56.dp)
+    val fabIconSize = (navIconSize * 0.6f).coerceIn(20.dp, 36.dp)
+    val listActionIconSize = (base * 0.07f).coerceIn(20.dp, 32.dp)
 
     val qrList by viewModel.qrList.collectAsState()
     var filterName by remember { mutableStateOf("") }
     var showOnlyFavorite by remember { mutableStateOf(false) }
+
+    // Restore saved filters
+    LaunchedEffect(Unit) {
+        val prefs = context.appDataStore.data.first()
+        filterName = prefs[KEY_QR_FILTER_NAME] ?: ""
+        showOnlyFavorite = prefs[KEY_QR_ONLY_FAV] ?: false
+    }
+
+    // Persist on change
+    LaunchedEffect(filterName) {
+        context.appDataStore.edit { it[KEY_QR_FILTER_NAME] = filterName }
+    }
+    LaunchedEffect(showOnlyFavorite) {
+        context.appDataStore.edit { it[KEY_QR_ONLY_FAV] = showOnlyFavorite }
+    }
 
     LaunchedEffect(filterName, showOnlyFavorite) {
         viewModel.filterQrs(
@@ -91,7 +129,7 @@ fun QrStorageScreen(
                     Icon(
                         imageVector = Icons.Filled.Search,
                         contentDescription = "Search",
-                        tint = colorScheme.onSurfaceVariant
+                        tint = colorScheme.onSurface
                     )
                 },
                 trailingIcon = {
@@ -100,7 +138,7 @@ fun QrStorageScreen(
                             Icon(
                                 imageVector = Icons.Filled.Clear,
                                 contentDescription = "Clear",
-                                tint = colorScheme.onSurfaceVariant
+                                tint = colorScheme.onSurface
                             )
                         }
                     }
@@ -123,7 +161,7 @@ fun QrStorageScreen(
                 Icon(
                     imageVector = if (showOnlyFavorite) Icons.Filled.Favorite else Icons.Outlined.Favorite,
                     contentDescription = "Favorite",
-                    tint = if (showOnlyFavorite) Color(0xFFFFD700) else colorScheme.onSurfaceVariant
+                    tint = colorScheme.onSurface
                 )
             }
         }
@@ -147,7 +185,9 @@ fun QrStorageScreen(
                         QrStorageItem(
                             qr = qr,
                             onFavorite = {},
-                            onDelete = { viewModel.deleteQr(qr) }
+                            onDelete = { viewModel.deleteQr(qr) },
+                            thumbSize = thumbSize,
+                            actionIconSize = listActionIconSize
                         )
                     }
                 }
@@ -171,30 +211,35 @@ fun QrStorageScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    modifier = Modifier.size(48.dp),
-                    tint = colorScheme.onBackground
+                    modifier = Modifier.size(navIconSize),
+                    tint = colorScheme.onSurface
                 )
             }
 
             FloatingActionButton(
                 onClick = onNavigateToQrCreation,
-                containerColor = Color.DarkGray,
+                containerColor = colorScheme.primary,
                 contentColor = colorScheme.onPrimary,
                 shape = CircleShape
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Create QR code",
-                    modifier = Modifier.size(28.dp) // smaller icon inside circle
+                    modifier = Modifier.size(fabIconSize)
                 )
             }
         }
     }
 }
 
-
 @Composable
-fun QrStorageItem(qr: QrModel,onFavorite: () -> Unit ,onDelete: () -> Unit) {
+fun QrStorageItem(
+    qr: QrModel,
+    onFavorite: () -> Unit,
+    onDelete: () -> Unit,
+    thumbSize: Dp,
+    actionIconSize: Dp
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -205,7 +250,7 @@ fun QrStorageItem(qr: QrModel,onFavorite: () -> Unit ,onDelete: () -> Unit) {
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(Modifier.size(64.dp)) {
+            Box(Modifier.size(thumbSize)) {
                 // Display the stored QR image directly from the database
                 val bitmap = BitmapFactory.decodeByteArray(qr.content, 0, qr.content.size)
                 if (bitmap != null) {
@@ -226,10 +271,20 @@ fun QrStorageItem(qr: QrModel,onFavorite: () -> Unit ,onDelete: () -> Unit) {
                 if (qr.favorite) Text("★ Favorite", color = MaterialTheme.colorScheme.primary)
             }
             IconButton(onClick = onFavorite) {
-                Icon(Icons.Default.Favorite, contentDescription = "Favorite QR")
+                Icon(
+                    Icons.Default.Favorite,
+                    contentDescription = "Favorite QR",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(actionIconSize)
+                )
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete QR")
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete QR",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(actionIconSize)
+                )
             }
         }
     }
