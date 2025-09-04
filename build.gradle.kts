@@ -2,9 +2,11 @@
 plugins {
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.jetbrains.kotlin.android) apply false
-    id("io.gitlab.arturbosch.detekt") version "1.23.0" // Add Detekt plugin
-    id("org.jlleitschuh.gradle.ktlint") version "11.3.2" // Add ktlint plugin
+    id("io.gitlab.arturbosch.detekt") version "1.23.8" // Add Detekt plugin
+    id("org.jlleitschuh.gradle.ktlint") version "13.1.0" // Add ktlint plugin
     alias(libs.plugins.compose.compiler) apply false
+    alias(libs.plugins.ksp) apply false
+    alias(libs.plugins.hilt) apply false
 }
 
 detekt {
