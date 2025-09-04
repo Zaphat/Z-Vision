@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.compose.compiler)
     id("com.google.devtools.ksp") version "2.2.0-2.0.2"
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -86,7 +87,9 @@ dependencies {
     implementation(libs.ui.graphics)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.datastore.preferences)
-
+    implementation(libs.hilt.android)
+    implementation(libs.hilt.navigation.compose)
+    ksp(libs.hilt.compiler)
     // Tests
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
