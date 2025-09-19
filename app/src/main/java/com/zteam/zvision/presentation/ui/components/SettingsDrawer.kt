@@ -43,6 +43,7 @@ private val KEY_THEME_MODE = stringPreferencesKey("theme_mode")
 @Composable
 fun SettingsDrawer(
     drawerState: DrawerState,
+    onManageLanguages: () -> Unit = {},
     content: @Composable () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -99,6 +100,16 @@ fun SettingsDrawer(
                                 )
                             }
                         }
+                        // Manage language packages entry
+                        NavigationDrawerItem(
+                            label = { Text("Manage Language Packages") },
+                            selected = false,
+                            onClick = {
+                                onManageLanguages()
+                                scope.launch { drawerState.close() }
+                            }
+                        )
+
                         // Existing menu items
                         menuItems.forEach { (title, action) ->
                             NavigationDrawerItem(

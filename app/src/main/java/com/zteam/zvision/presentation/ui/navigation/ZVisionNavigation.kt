@@ -24,6 +24,7 @@ import com.zteam.zvision.appDataStore
 import com.zteam.zvision.presentation.ui.screens.MainScreen
 import com.zteam.zvision.presentation.ui.screens.browser.InAppBrowserScreen
 import com.zteam.zvision.presentation.ui.screens.language.LanguageChoosingPage
+import com.zteam.zvision.presentation.ui.screens.language.ManageLanguagesScreen
 import com.zteam.zvision.presentation.ui.screens.qr_create_store.QrCreationScreen
 import com.zteam.zvision.presentation.ui.screens.qr_create_store.QrStorageScreen
 import kotlinx.coroutines.flow.first
@@ -115,12 +116,19 @@ fun ZVisionNavigation() {
                 onNavigateToLanguageSelection = { isFromLanguage ->
                     navigationHelper.navigateToLanguageSelection(isFromLanguage)
                 },
+                onManageLanguagePackages = {
+                    navigationHelper.navigateToManageLanguagePackages()
+                },
                 onNavigateToQrStorage = {
                     navigationHelper.navigateToQrStorage()
                 },
                 onOpenUrl = openInAppBrowser,
                 scanningEnabled = !browserOpen
             )
+        }
+
+        composable("manage_languages") {
+            ManageLanguagesScreen(onBack = { navigationHelper.safePopBack() })
         }
 
         composable("language_selection/{isFromLanguage}") { backStackEntry ->

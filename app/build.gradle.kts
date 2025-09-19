@@ -84,6 +84,9 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.runtime)
     implementation(libs.barcode.scanning)
+    // ML Kit on-device translation and language identification
+    implementation(libs.mlkit.translate)
+    implementation(libs.mlkit.language.id)
     implementation(libs.ui.graphics)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.datastore.preferences)
