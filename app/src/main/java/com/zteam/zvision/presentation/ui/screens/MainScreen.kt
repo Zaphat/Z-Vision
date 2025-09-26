@@ -75,6 +75,7 @@ fun MainScreen(
     translateFromLanguage: String,
     translateToLanguage: String,
     onNavigateToLanguageSelection: (Boolean) -> Unit,
+    onManageLanguagePackages: () -> Unit,
     onNavigateToQrStorage: () -> Unit,
     onOpenUrl: (String) -> Unit,
     scanningEnabled: Boolean
@@ -145,7 +146,8 @@ fun MainScreen(
     val bottomIconPadding = (mediumBtnSize * 0.14f)
 
     SettingsDrawer(
-        drawerState = drawerState
+        drawerState = drawerState,
+        onManageLanguages = onManageLanguagePackages
     ) {
         Column(
             modifier = Modifier

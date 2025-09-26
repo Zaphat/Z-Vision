@@ -46,4 +46,8 @@ class NavigationHelper(
     fun navigateToQrCreation() {
         safeNavigate("qr_creation")
     }
+    
+    fun navigateToManageLanguagePackages() {
+        safeNavigate("manage_languages")
+    }
 }

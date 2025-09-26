@@ -6,7 +6,9 @@ import com.zteam.zvision.data.generator.QRGenerator
 import com.zteam.zvision.data.local.dao.AppDatabase
 import com.zteam.zvision.data.local.dao.QrDao
 import com.zteam.zvision.data.repository.QrRepository
+import com.zteam.zvision.data.repository.TranslatorRepository
 import com.zteam.zvision.domain.usecase.QrUsecase
+import com.zteam.zvision.domain.usecase.TranslatorUsecase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -32,4 +34,12 @@ object AppModule {
 
     @Provides @Singleton
     fun provideQrGenerator(): QRGenerator = QRGenerator()
+
+    @Provides @Singleton
+    fun provideTranslatorRepository(@ApplicationContext context: Context): TranslatorRepository =
+        TranslatorRepository(context)
+
+    @Provides @Singleton
+    fun provideTranslatorUsecase(repo: TranslatorRepository): TranslatorUsecase =
+        TranslatorUsecase(repo)
 }
