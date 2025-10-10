@@ -420,4 +420,5 @@ fun viewHistoryQRScans() {
 
 fun openCamera() {
     // TODO: Implement camera opening
+    Log.i("Hello Test", "Hello")
 }

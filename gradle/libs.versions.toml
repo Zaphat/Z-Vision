@@ -6,6 +6,8 @@ datastorePreferencesCore = "1.1.7"
 hiltNavigationCompose = "1.2.0"
 ksp-version = "2.2.0-2.0.2"
 hilt-version = "2.57.1"
+textRecognition = "16.0.1"
+translate = "17.0.3"
 zxingCore = "3.5.3"
 kotlin = "2.2.10"
 coreKtx = "1.17.0"
@@ -44,6 +46,8 @@ mlkit-language-id = { module = "com.google.mlkit:language-id", version.ref = "ml
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt-version" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt-version" }
 hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+text-recognition = { module = "com.google.mlkit:text-recognition", version.ref = "textRecognition" }
+translate = { module = "com.google.mlkit:translate", version.ref = "translate" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxingCore" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

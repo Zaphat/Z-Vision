@@ -18,12 +18,12 @@ class TextRecognizerService(private val context: Context) {
         TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     }
 
-    fun fromBitmap(bitmap: Bitmap, onResult: (String) -> Unit, onError: (Exception) -> Unit) {
+    fun fromBitmap(bitmap: Bitmap, onResult: (Text) -> Unit, onError: (Exception) -> Unit) {
         val inputImage = inputImageFromBitmap(bitmap)
         processInputImage(inputImage, onResult, onError)
     }
 
-    fun fromUri(uri: Uri, onResult: (String) -> Unit, onError: (Exception) -> Unit) {
+    fun fromUri(uri: Uri, onResult: (Text) -> Unit, onError: (Exception) -> Unit) {
         val inputImage = inputImageFromUri(context, uri)
         processInputImage(inputImage, onResult, onError)
     }
@@ -31,7 +31,7 @@ class TextRecognizerService(private val context: Context) {
     @OptIn(ExperimentalGetImage::class)
     fun fromImageProxy(
         imageProxy: ImageProxy,
-        onResult: (String) -> Unit,
+        onResult: (Text) -> Unit,
         onError: (Exception) -> Unit
     ) {
         val inputImage = inputImageFromImageProxy(imageProxy)
@@ -50,7 +50,7 @@ class TextRecognizerService(private val context: Context) {
 
     private fun processInputImage(
         inputImage: InputImage?,
-        onResult: (String) -> Unit,
+        onResult: (Text) -> Unit,
         onError: ((Exception) -> Unit)? = null,
         onComplete: (() -> Unit)? = null
     ) {
@@ -61,7 +61,7 @@ class TextRecognizerService(private val context: Context) {
 
         recognizer.process(inputImage)
             .addOnSuccessListener { visionText ->
-                onResult(visionText.text)
+                onResult(visionText)
             }
             .addOnFailureListener { e ->
                 onError?.invoke(e)
