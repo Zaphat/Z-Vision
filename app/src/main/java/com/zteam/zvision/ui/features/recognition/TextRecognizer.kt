@@ -32,10 +32,11 @@ class TextRecognizerService(private val context: Context) {
     fun fromImageProxy(
         imageProxy: ImageProxy,
         onResult: (Text) -> Unit,
-        onError: (Exception) -> Unit
+        onError: ((Exception) -> Unit)? = null,
+        onComplete: (() -> Unit)? = null
     ) {
         val inputImage = inputImageFromImageProxy(imageProxy)
-        processInputImage(inputImage, onResult, onError)
+        processInputImage(inputImage, onResult, onError, onComplete)
     }
 
     fun prettyText(text: Text): String {

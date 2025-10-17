@@ -40,6 +40,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,10 +61,13 @@ import com.zteam.zvision.R
 import com.zteam.zvision.domain.model.QrDetection
 import com.zteam.zvision.presentation.ui.components.CameraPermissionRequest
 import com.zteam.zvision.presentation.ui.components.CameraQRPreview
+import com.zteam.zvision.presentation.ui.components.CameraTranslationPreview
 import com.zteam.zvision.presentation.ui.components.QrBoundingBoxOverlay
 import com.zteam.zvision.presentation.ui.components.QrResultBottomSheet
 import com.zteam.zvision.presentation.ui.components.SettingsDrawer
 import com.zteam.zvision.presentation.viewmodel.QRViewModel
+import com.zteam.zvision.presentation.viewmodel.TranslationViewModel
+import com.zteam.zvision.ui.features.recognition.TextRecognizerService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -87,6 +92,7 @@ fun MainScreen(
     var resultText by remember { mutableStateOf("") }
     var copyEnabled by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val translationViewModel: TranslationViewModel = hiltViewModel()
 
     val pickMedia = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
         if (!scanningEnabled) return@rememberLauncherForActivityResult
@@ -100,7 +106,8 @@ fun MainScreen(
                     showResultSheet = true
                 } else {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "No QR code found in image", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "No QR code found in image", Toast.LENGTH_SHORT)
+                            .show()
                     }
                 }
             }
@@ -111,7 +118,10 @@ fun MainScreen(
 
     // Camera permission state for live preview
     val hasCameraPermissionInitial = remember {
-        ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
     }
     var hasCameraPermission by remember { mutableStateOf(hasCameraPermissionInitial) }
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
@@ -119,7 +129,11 @@ fun MainScreen(
     ) { granted ->
         hasCameraPermission = granted
         if (!granted) {
-            Toast.makeText(context, "Camera permission is required for live preview", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                "Camera permission is required for live preview",
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -127,6 +141,23 @@ fun MainScreen(
     var previewSize by remember { mutableStateOf(IntSize.Zero) }
     var detection by remember { mutableStateOf<QrDetection?>(null) }
     var lastShownText by remember { mutableStateOf<String?>(null) }
+
+    val translatedText by translationViewModel.translatedText.collectAsState()
+    val textRecognizer by remember { mutableStateOf(TextRecognizerService(context)) }
+
+    LaunchedEffect(translatedText) {
+        // This block runs when `translatedText` changes to a new non-null value
+        translatedText?.let { newText ->
+            // Prevent showing the sheet if the text is the same or the sheet is already visible with this text
+            if (lastShownText != newText || !showResultSheet) {
+                resultText = newText
+                // The `translatedText` is already a non-null string inside this block.
+                // You no longer need to check if it is null here.
+                showResultSheet = true
+                lastShownText = newText
+            }
+        }
+    }
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
 
@@ -195,6 +226,7 @@ fun MainScreen(
                             )
                         }
                     }
+
                     "Translate" -> {
                         Row(
                             modifier = Modifier.weight(1f),
@@ -203,7 +235,9 @@ fun MainScreen(
                         ) {
                             Button(
                                 onClick = { onNavigateToLanguageSelection(true) },
-                                modifier = Modifier.weight(1f).height(wideBtnHeight),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(wideBtnHeight),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                     contentColor = MaterialTheme.colorScheme.onSurface
@@ -223,7 +257,9 @@ fun MainScreen(
 
                             Button(
                                 onClick = { onNavigateToLanguageSelection(false) },
-                                modifier = Modifier.weight(1f).height(wideBtnHeight),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(wideBtnHeight),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
                                     contentColor = MaterialTheme.colorScheme.onSurface
@@ -235,6 +271,7 @@ fun MainScreen(
                             }
                         }
                     }
+
                     else -> {
                         Spacer(Modifier.weight(1f))
                     }
@@ -264,25 +301,50 @@ fun MainScreen(
                             .fillMaxSize()
                             .onSizeChanged { previewSize = it }
                     ) {
-                        CameraQRPreview(
-                            modifier = Modifier.fillMaxSize(),
-                            onQrDetected = { det ->
-                                detection = det
-                                det?.let {
-                                    // Update the sheet when new content appears or when sheet is hidden
-                                    if (lastShownText != it.text || !showResultSheet) {
-                                        resultText = it.text
-                                        copyEnabled = true
-                                        showResultSheet = true
-                                        lastShownText = it.text
+                        if (selectingMode == "QR") {
+                            CameraQRPreview(
+                                modifier = Modifier.fillMaxSize(),
+                                onQrDetected = { det ->
+                                    detection = det
+                                    det?.let {
+                                        // Update the sheet when new content appears or when sheet is hidden
+                                        if (lastShownText != it.text || !showResultSheet) {
+                                            resultText = it.text
+                                            copyEnabled = true
+                                            showResultSheet = true
+                                            lastShownText = it.text
+                                        }
                                     }
                                 }
-                            }
-                        )
-                        QrBoundingBoxOverlay(
-                            viewSize = previewSize,
-                            detection = detection
-                        )
+                            )
+                            QrBoundingBoxOverlay(
+                                viewSize = previewSize,
+                                detection = detection
+                            )
+                        } else if (selectingMode == "Translate") {
+                            CameraTranslationPreview(
+                                modifier = Modifier.fillMaxSize(),
+                                analyzer = { img ->
+                                    textRecognizer.fromImageProxy(
+                                        img,
+                                        onResult = { text ->
+                                            val regText = textRecognizer.prettyText(text)
+                                            scope.launch {
+                                                val fromIso = translationViewModel.identifyLang(translateFromLanguage)
+                                                val toIso = translationViewModel.identifyLang(translateToLanguage)
+                                                translationViewModel.translate(
+                                                    regText,
+                                                    fromIso,
+                                                    toIso
+                                                )
+                                            }
+                                        },
+                                        onComplete = {
+                                            img.close()
+                                        })
+                                }
+                            )
+                        }
                     }
                 } else if (!hasCameraPermission) {
                     CameraPermissionRequest(
@@ -308,7 +370,11 @@ fun MainScreen(
                 Button(
                     onClick = {
                         if (selectingMode != "QR") {
-                            Toast.makeText(context, "TODO: Translate from image not implemented yet", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                "TODO: Translate from image not implemented yet",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         } else {
                             if (scanningEnabled) {
                                 pickMedia.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
@@ -398,7 +464,9 @@ fun MainScreen(
                         containerColor = if (isTranslateSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                         contentColor = if (isTranslateSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                     ),
-                    elevation = if (isTranslateSelected) ButtonDefaults.buttonElevation(defaultElevation = 6.dp) else ButtonDefaults.buttonElevation(
+                    elevation = if (isTranslateSelected) ButtonDefaults.buttonElevation(
+                        defaultElevation = 6.dp
+                    ) else ButtonDefaults.buttonElevation(
                         defaultElevation = 0.dp
                     )
                 ) {
@@ -420,5 +488,4 @@ fun viewHistoryQRScans() {
 
 fun openCamera() {
     // TODO: Implement camera opening
-    Log.i("Hello Test", "Hello")
 }
