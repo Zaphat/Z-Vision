@@ -67,7 +67,6 @@ import com.zteam.zvision.presentation.ui.components.QrResultBottomSheet
 import com.zteam.zvision.presentation.ui.components.SettingsDrawer
 import com.zteam.zvision.presentation.viewmodel.QRViewModel
 import com.zteam.zvision.presentation.viewmodel.TranslationViewModel
-import com.zteam.zvision.ui.features.recognition.TextRecognizerService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -93,8 +92,7 @@ fun MainScreen(
     var copyEnabled by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val translationViewModel: TranslationViewModel = hiltViewModel()
-    val textRecognizer by remember { mutableStateOf(TextRecognizerService(context)) }
-    var isProcessingImageTranslation by remember { mutableStateOf(false) }
+    val isProcessingImageTranslation by translationViewModel.isLoading.collectAsState()
 
     val pickMedia = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
         if (!scanningEnabled) return@rememberLauncherForActivityResult
@@ -110,53 +108,24 @@ fun MainScreen(
                             showResultSheet = true
                         } else {
                             withContext(Dispatchers.Main) {
-                                Toast.makeText(context, "No QR code found in image", Toast.LENGTH_SHORT)
+                                Toast.makeText(
+                                    context,
+                                    "No QR code found in image",
+                                    Toast.LENGTH_SHORT
+                                )
                                     .show()
                             }
                         }
                     }
+
                     "Translate" -> {
-                        // Use TextRecognizer to extract text from the image
-                        isProcessingImageTranslation = true
-                        textRecognizer.fromUri(
-                            uri = uri,
-                            onResult = { recognizedText ->
-                                val extractedText = textRecognizer.prettyText(recognizedText)
-                                if (extractedText.isNotBlank()) {
-                                    // Translate the recognized text
-                                    scope.launch {
-                                        val fromIso = translationViewModel.identifyLang(translateFromLanguage)
-                                        val toIso = translationViewModel.identifyLang(translateToLanguage)
-                                        translationViewModel.translate(
-                                            text = extractedText,
-                                            fromIso = fromIso,
-                                            toIso = toIso
-                                        )
-                                    }
-                                } else {
-                                    isProcessingImageTranslation = false
-                                    scope.launch {
-                                        withContext(Dispatchers.Main) {
-                                            Toast.makeText(context, "No text found in image", Toast.LENGTH_SHORT)
-                                                .show()
-                                        }
-                                    }
-                                }
-                            },
-                            onError = { exception ->
-                                isProcessingImageTranslation = false
-                                Log.e("PhotoPicker", "Text recognition failed", exception)
-                                scope.launch {
-                                    withContext(Dispatchers.Main) {
-                                        Toast.makeText(
-                                            context,
-                                            "Failed to recognize text: ${exception.message}",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                }
-                            }
-                        )
+                        translationViewModel.setLoading(true)
+                        scope.launch {
+                            val fromIso =
+                                translationViewModel.identifyLanguage(translateFromLanguage)
+                            val toIso = translationViewModel.identifyLanguage(translateToLanguage)
+                            translationViewModel.translateFromUri(context, uri, fromIso, toIso)
+                        }
                     }
                 }
             }
@@ -194,14 +163,9 @@ fun MainScreen(
     val translatedText by translationViewModel.translatedText.collectAsState()
 
     LaunchedEffect(translatedText) {
-        // This block runs when `translatedText` changes to a new non-null value
         translatedText?.let { newText ->
-            // Prevent showing the sheet if the text is the same or the sheet is already visible with this text
-            // Also allow updates when processing image translation (from image picker)
-            if ((lastShownText != newText || !showResultSheet)) {
+            if (lastShownText != newText || !showResultSheet) {
                 resultText = newText
-                // The `translatedText` is already a non-null string inside this block.
-                // You no longer need to check if it is null here.
                 showResultSheet = true
                 lastShownText = newText
             }
@@ -244,9 +208,9 @@ fun MainScreen(
                 QrResultBottomSheet(
                     resultText = resultText,
                     copyEnabled = copyEnabled,
-                    onDismiss = { 
+                    onDismiss = {
                         showResultSheet = false
-                        isProcessingImageTranslation = false
+                        translationViewModel.setLoading(false)
                     },
                     sheetState = sheetState,
                     onOpenUrl = onOpenUrl
@@ -377,26 +341,15 @@ fun MainScreen(
                             CameraTranslationPreview(
                                 modifier = Modifier.fillMaxSize(),
                                 analyzer = { img ->
-                                    if (!isProcessingImageTranslation) {
-                                        textRecognizer.fromImageProxy(
-                                            img,
-                                            onResult = { visionText ->
-                                                val regText = textRecognizer.prettyText(visionText)
-                                                scope.launch {
-                                                    val fromIso = translationViewModel.identifyLang(translateFromLanguage)
-                                                    val toIso = translationViewModel.identifyLang(translateToLanguage)
-                                                    translationViewModel.translate(
-                                                        regText,
-                                                        fromIso,
-                                                        toIso
-                                                    )
-                                                }
-                                            },
-                                            onComplete = {
-                                                img.close()
-                                            })
-                                    } else {
-                                        img.close()
+                                    if (isProcessingImageTranslation) return@CameraTranslationPreview img.close()
+                                    scope.launch {
+                                        val fromIso = translationViewModel.identifyLanguage(
+                                            translateFromLanguage
+                                        )
+                                        val toIso = translationViewModel.identifyLanguage(
+                                            translateToLanguage
+                                        )
+                                        translationViewModel.translateFromImage(img, fromIso, toIso)
                                     }
                                 }
                             )

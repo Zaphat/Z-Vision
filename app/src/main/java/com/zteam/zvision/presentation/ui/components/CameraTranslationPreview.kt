@@ -102,7 +102,7 @@ fun CameraTranslationPreview(
                 cameraProvider?.unbindAll()
                 cameraProvider?.bindToLifecycle(lifecycleOwner, cameraSelector, useCaseGroup)
             } catch (e: Exception) {
-                Log.e("CameraPreview", "Binding failed", e)
+                Log.e("CameraTranslationPreview", "Binding failed", e)
             }
         }
         cameraProviderFuture.addListener(listener, ContextCompat.getMainExecutor(context))
