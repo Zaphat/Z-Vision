@@ -32,7 +32,8 @@ import java.util.concurrent.Executors
 fun CameraTranslationPreview(
     modifier: Modifier = Modifier,
     analyzer: (ImageProxy) -> Unit,
-    cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+    cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA,
+    onImageCaptureUseCase: ((androidx.camera.core.ImageCapture) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -83,6 +84,12 @@ fun CameraTranslationPreview(
                     analyzer(proxy)
                 }
 
+                // Create ImageCapture use case if callback provided
+                val imageCapture = androidx.camera.core.ImageCapture.Builder()
+                    .setTargetRotation(rotation)
+                    .setCaptureMode(androidx.camera.core.ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                    .build()
+
                 // UseCaseGroup with ViewPort for correct analysis dimensions
                 val viewPort = previewView.let {
                     val vpWidth = it.width.coerceAtLeast(1)
@@ -93,14 +100,25 @@ fun CameraTranslationPreview(
                     ).build()
                 }
 
-                val useCaseGroup = UseCaseGroup.Builder()
+                val useCaseGroupBuilder = UseCaseGroup.Builder()
                     .setViewPort(viewPort)
                     .addUseCase(preview)
                     .addUseCase(imageAnalysis)
-                    .build()
+                
+                // Add ImageCapture if callback is provided
+                if (onImageCaptureUseCase != null) {
+                    useCaseGroupBuilder.addUseCase(imageCapture)
+                }
+                
+                val useCaseGroup = useCaseGroupBuilder.build()
 
                 cameraProvider?.unbindAll()
                 cameraProvider?.bindToLifecycle(lifecycleOwner, cameraSelector, useCaseGroup)
+                
+                // Pass ImageCapture instance back to caller
+                if (onImageCaptureUseCase != null) {
+                    onImageCaptureUseCase(imageCapture)
+                }
             } catch (e: Exception) {
                 Log.e("CameraTranslationPreview", "Binding failed", e)
             }
