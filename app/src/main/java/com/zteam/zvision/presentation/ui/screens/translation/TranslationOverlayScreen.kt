@@ -23,6 +23,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.withTranslation
+import androidx.core.graphics.withRotation
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.zteam.zvision.presentation.viewmodel.TranslationOverlayViewModel
 import kotlinx.coroutines.Dispatchers
@@ -126,6 +128,9 @@ fun TranslationOverlayScreen(
                 val imageWidth = bitmap.width.toFloat()
                 val imageHeight = bitmap.height.toFloat()
                 
+                // Determine if image is landscape
+                val isLandscape = imageWidth > imageHeight
+                
                 // Calculate scale to fit image in screen (ContentScale.Fit logic)
                 val scale = minOf(screenWidth / imageWidth, screenHeight / imageHeight)
                 val scaledImageWidth = imageWidth * scale
@@ -142,17 +147,19 @@ fun TranslationOverlayScreen(
                     val scaledWidth = block.width * scale
                     val scaledHeight = block.height * scale
                     
-                    // Calculate font size based on original text height to match detected text size
-                    val fontSize = (block.height * scale * 0.7f).coerceAtLeast(10f).coerceAtMost(32f)
-                    
                     Box(
                         modifier = Modifier
                             .offset(x = (scaledX / density.density).dp, y = (scaledY / density.density).dp)
                             .width((scaledWidth / density.density).dp)
-                            .wrapContentHeight()
+                            .height((scaledHeight / density.density).dp)
+                            .then(
+                                // Rotate text boxes 90 degrees for landscape images
+                                if (isLandscape) Modifier.rotate(90f) else Modifier
+                            )
                             .background(Color.White.copy(alpha = 0.9f))
                             .padding(horizontal = 4.dp, vertical = 2.dp)
                     ) {
+                        val fontSize = (12 * scale).coerceAtLeast(8f).coerceAtMost(14f)
                         Text(
                             text = block.translatedText,
                             color = Color.Black,
@@ -238,6 +245,10 @@ private fun createBitmapWithTranslations(originalBitmap: Bitmap, textBlocks: Lis
     val resultBitmap = originalBitmap.copy(originalBitmap.config ?: Bitmap.Config.ARGB_8888, true)
     val canvas = Canvas(resultBitmap)
     
+    val imageWidth = originalBitmap.width.toFloat()
+    val imageHeight = originalBitmap.height.toFloat()
+    val isLandscape = imageWidth > imageHeight
+    
     val backgroundPaint = Paint().apply {
         color = android.graphics.Color.WHITE
         style = Paint.Style.FILL
@@ -248,8 +259,9 @@ private fun createBitmapWithTranslations(originalBitmap: Bitmap, textBlocks: Lis
         val padding = 8f
         val boxWidth = block.width - (padding * 2)
         
-        // Calculate font size based on original text height to match detected text size
-        val fontSize = (block.height * 0.7f).coerceAtLeast(10f).coerceAtMost(32f)
+        // Calculate font size based on image size (match UI scaling)
+        val scale = 1.0f // Already in bitmap coordinates
+        val fontSize = (12 * scale).coerceAtLeast(8f).coerceAtMost(14f) * 2.5f // Scale up for bitmap resolution
         
         val textPaint = TextPaint().apply {
             color = android.graphics.Color.BLACK
@@ -275,18 +287,51 @@ private fun createBitmapWithTranslations(originalBitmap: Bitmap, textBlocks: Lis
         val textHeight = staticLayout.height.toFloat()
         val actualBoxHeight = textHeight + (padding * 2)
         
-        // Draw white background
-        canvas.drawRect(
-            block.x,
-            block.y,
-            block.x + block.width,
-            block.y + actualBoxHeight,
-            backgroundPaint
-        )
-        
-        // Draw text with StaticLayout
-        canvas.withTranslation(block.x + padding, block.y + padding) {
-            staticLayout.draw(canvas)
+        if (isLandscape) {
+            // For landscape images, rotate the text boxes 90 degrees
+            canvas.save()
+            
+            // Calculate rotation center (center of the text block)
+            val centerX = block.x + block.width / 2f
+            val centerY = block.y + block.height / 2f
+            
+            // Rotate canvas around the center of the text block
+            canvas.rotate(90f, centerX, centerY)
+            
+            // Calculate new position after rotation
+            val rotatedX = centerX - actualBoxHeight / 2f
+            val rotatedY = centerY - boxWidth / 2f
+            
+            // Draw white background (rotated)
+            canvas.drawRect(
+                rotatedX,
+                rotatedY,
+                rotatedX + actualBoxHeight,
+                rotatedY + boxWidth,
+                backgroundPaint
+            )
+            
+            // Draw text with StaticLayout
+            canvas.withTranslation(rotatedX + padding, rotatedY + padding) {
+                staticLayout.draw(canvas)
+            }
+            
+            canvas.restore()
+        } else {
+            // For portrait images, render normally
+            // Draw white background
+            canvas.drawRect(
+                block.x,
+                block.y,
+                block.x + block.width,
+                block.y + actualBoxHeight,
+                backgroundPaint
+            )
+            
+            // Draw text with StaticLayout
+            canvas.withTranslation(block.x + padding, block.y + padding) {
+                staticLayout.draw(canvas)
+            }
         }
     }
     
