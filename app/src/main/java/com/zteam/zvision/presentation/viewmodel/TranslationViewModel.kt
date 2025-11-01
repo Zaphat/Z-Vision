@@ -45,8 +45,14 @@ class TranslationViewModel @Inject constructor(
                 textRecognitionUsecase.fromUri(
                     context = context,
                     uri = uri,
-                    onResult = {text -> translate(textRecognitionUsecase.prettyText(text), fromIso, toIso)},
-                    onError = {e -> throw e}
+                    onResult = { text ->
+                        translate(
+                            textRecognitionUsecase.prettyText(text),
+                            fromIso,
+                            toIso
+                        )
+                    },
+                    onError = { e -> throw e }
                 )
             } catch (e: Exception) {
                 Log.e("TranslationViewModel", "TranslateFromUri error", e)
@@ -60,8 +66,22 @@ class TranslationViewModel @Inject constructor(
                 textRecognitionUsecase.fromImageProxy(
                     image,
                     onResult = { text ->
+                        val fromIsoString = buildString {
+                            for (block in text.textBlocks) {
+                                for (line in block.lines) {
+                                    for (element in line.elements) {
+                                        Log.i(
+                                            "TranslationViewModel",
+                                            "recognizedLang: ${element.recognizedLanguage}, fromIso: $fromIso"
+                                        )
+                                        if (element.recognizedLanguage == fromIso) append("${element.text} ")
+                                    }
+                                }
+                                appendLine()
+                            }
+                        }.trim()
                         translate(
-                            textRecognitionUsecase.prettyText(text), fromIso, toIso
+                            fromIsoString, fromIso, toIso
                         )
                     },
                     onError = { e -> throw e },
