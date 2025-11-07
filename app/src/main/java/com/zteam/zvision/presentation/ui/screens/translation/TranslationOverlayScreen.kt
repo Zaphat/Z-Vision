@@ -5,13 +5,11 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.Rect
 import android.os.Environment
 import android.provider.MediaStore
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -24,9 +22,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -35,11 +37,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.withTranslation
-import androidx.core.graphics.withRotation
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.zteam.zvision.presentation.viewmodel.TranslationOverlayViewModel
-import com.zteam.zvision.utils.getDevicePhysicalOrientation
 import com.zteam.zvision.utils.rememberDevicePhysicalOrientation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -72,6 +72,9 @@ fun TranslationOverlayScreen(
     var isSaving by remember { mutableStateOf(false) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val isLandscape by rememberDevicePhysicalOrientation(lifecycleOwner)
+    
+    // Graphics layer to capture the image + translations Box
+    val graphicsLayer = rememberGraphicsLayer()
 
     // Process image on first load
     LaunchedEffect(bitmap) {
@@ -83,21 +86,15 @@ fun TranslationOverlayScreen(
         scope.launch {
             isSaving = true
             try {
+                // Capture the rendered Box as bitmap on main thread
+                val finalBitmap = if (showTranslations && textBlocks.isNotEmpty()) {
+                    // Use the graphicsLayer to create bitmap
+                    graphicsLayer.toImageBitmap().asAndroidBitmap()
+                } else {
+                    bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false)
+                }
+                
                 val result = withContext(Dispatchers.IO) {
-                    // Create bitmap with or without translations
-                    val finalBitmap = if (showTranslations && textBlocks.isNotEmpty()) {
-                        createBitmapWithTranslations(
-                            context,
-                            bitmap,
-                            textBlocks,
-                            context.resources.displayMetrics.widthPixels.toFloat(),
-                            context.resources.displayMetrics.heightPixels.toFloat(),
-                            isLandscape
-                        )
-                    } else {
-                        bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false)
-                    }
-
                     // Save to gallery
                     saveBitmapToMediaStore(context, finalBitmap)
                 }
@@ -126,28 +123,42 @@ fun TranslationOverlayScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Display the captured image without rotation
-        Image(
-            bitmap = bitmap.asImageBitmap(),
-            contentDescription = "Captured photo",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit
-        )
+        // Box for image + translations that we'll capture
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawWithCache {
+                    // Record the content into graphics layer
+                    onDrawWithContent {
+                        graphicsLayer.record {
+                            this@onDrawWithContent.drawContent()
+                        }
+                        drawLayer(graphicsLayer)
+                    }
+                }
+        ) {
+            // Display the captured image without rotation
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = "Captured photo",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit
+            )
 
-        // Overlay translations with proper scaling
-        if (showTranslations && textBlocks.isNotEmpty()) {
-            BoxWithConstraints(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                val screenWidth = constraints.maxWidth.toFloat()
-                val screenHeight = constraints.maxHeight.toFloat()
-                val imageWidth = bitmap.width.toFloat()
-                val imageHeight = bitmap.height.toFloat()
+            // Overlay translations with proper scaling
+            if (showTranslations && textBlocks.isNotEmpty()) {
+                BoxWithConstraints(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val screenWidth = constraints.maxWidth.toFloat()
+                    val screenHeight = constraints.maxHeight.toFloat()
+                    val imageWidth = bitmap.width.toFloat()
+                    val imageHeight = bitmap.height.toFloat()
 
-                // Calculate scale to fit image in screen (ContentScale.Fit logic)
-                val scale = minOf(screenWidth / imageWidth, screenHeight / imageHeight)
-                val scaledImageWidth = imageWidth * scale
-                val scaledImageHeight = imageHeight * scale
+                    // Calculate scale to fit image in screen (ContentScale.Fit logic)
+                    val scale = minOf(screenWidth / imageWidth, screenHeight / imageHeight)
+                    val scaledImageWidth = imageWidth * scale
+                    val scaledImageHeight = imageHeight * scale
 
                 // Calculate offset to center image
                 val offsetX = (screenWidth - scaledImageWidth) / 2f
@@ -190,15 +201,18 @@ fun TranslationOverlayScreen(
                 }
             }
         }
+        
+        // End of capturable Box
+        }
 
-        // Loading indicator
+        // Loading indicator (outside the captured Box)
         if (isLoading) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center)
             )
         }
 
-        // Top left back button
+        // Top left back button (outside the captured Box)
         IconButton(
             onClick = onBack,
             modifier = Modifier
