@@ -72,17 +72,17 @@ fun CameraTranslationPreview(
                     .build()
 
                 // Set the user-provided analyzer function
-                imageAnalysis.setAnalyzer(cameraExecutor) { proxy ->
-                    val now = SystemClock.uptimeMillis()
-                    // Throttle the analysis
-                    if (now - lastAnalysisTime < THROTTLE_INTERVAL_MS) {
-                        proxy.close()
-                        return@setAnalyzer
-                    }
-                    lastAnalysisTime = now
-                    Log.i("CameraTranslationPreview", "Analyzing image")
-                    analyzer(proxy)
-                }
+//                imageAnalysis.setAnalyzer(cameraExecutor) { proxy ->
+//                    val now = SystemClock.uptimeMillis()
+//                    // Throttle the analysis
+//                    if (now - lastAnalysisTime < THROTTLE_INTERVAL_MS) {
+//                        proxy.close()
+//                        return@setAnalyzer
+//                    }
+//                    lastAnalysisTime = now
+//                    Log.i("CameraTranslationPreview", "Analyzing image")
+//                    analyzer(proxy)
+//                }
 
                 // Create ImageCapture use case if callback provided
                 val imageCapture = androidx.camera.core.ImageCapture.Builder()
@@ -104,17 +104,17 @@ fun CameraTranslationPreview(
                     .setViewPort(viewPort)
                     .addUseCase(preview)
                     .addUseCase(imageAnalysis)
-                
+
                 // Add ImageCapture if callback is provided
                 if (onImageCaptureUseCase != null) {
                     useCaseGroupBuilder.addUseCase(imageCapture)
                 }
-                
+
                 val useCaseGroup = useCaseGroupBuilder.build()
 
                 cameraProvider?.unbindAll()
                 cameraProvider?.bindToLifecycle(lifecycleOwner, cameraSelector, useCaseGroup)
-                
+
                 // Pass ImageCapture instance back to caller
                 if (onImageCaptureUseCase != null) {
                     onImageCaptureUseCase(imageCapture)

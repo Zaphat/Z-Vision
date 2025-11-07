@@ -169,13 +169,13 @@ fun MainScreen(
     var previewSize by remember { mutableStateOf(IntSize.Zero) }
     var detection by remember { mutableStateOf<QrDetection?>(null) }
     var lastShownText by remember { mutableStateOf<String?>(null) }
-    
+
     // State for image capture
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
-    
+
     // Track previous scanning state to detect return from overlay
     var wasScanningDisabled by remember { mutableStateOf(false) }
-    
+
     // Detect when we return from overlay screen and reset imageCapture
     LaunchedEffect(scanningEnabled, selectingMode) {
         if (scanningEnabled && wasScanningDisabled && selectingMode == "Translate") {
@@ -202,15 +202,15 @@ fun MainScreen(
     // Function to capture and navigate
     fun openCamera() {
         val capture = imageCapture ?: return
-        
+
         // Create output file
         val photoFile = File(
             context.cacheDir,
             "captured_image_${System.currentTimeMillis()}.jpg"
         )
-        
+
         val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
-        
+
         capture.takePicture(
             outputOptions,
             ContextCompat.getMainExecutor(context),
@@ -226,16 +226,22 @@ fun MainScreen(
                                 ExifInterface.TAG_ORIENTATION,
                                 ExifInterface.ORIENTATION_NORMAL
                             )
-                            
+
+                            translationOverlayViewModel.setImageRotation(orientation)
+
                             val matrix = Matrix()
                             when (orientation) {
                                 ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
                                 ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
                                 ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
-                                ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.preScale(-1f, 1f)
+                                ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.preScale(
+                                    -1f,
+                                    1f
+                                )
+
                                 ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.preScale(1f, -1f)
                             }
-                            
+
                             if (!matrix.isIdentity) {
                                 val rotatedBitmap = Bitmap.createBitmap(
                                     bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
@@ -246,17 +252,18 @@ fun MainScreen(
                         } catch (e: Exception) {
                             Log.e("MainScreen", "Failed to read EXIF data", e)
                         }
-                        
+
                         // Store in ViewModel and navigate
                         translationOverlayViewModel.setCapturedBitmap(bitmap)
                         navController?.navigate("translation_overlay")
                     } else {
-                        Toast.makeText(context, "Failed to load captured image", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Failed to load captured image", Toast.LENGTH_SHORT)
+                            .show()
                     }
                     // Clean up temp file
                     photoFile.delete()
                 }
-                
+
                 override fun onError(exception: ImageCaptureException) {
                     Log.e("MainScreen", "Photo capture failed", exception)
                     Toast.makeText(context, "Photo capture failed", Toast.LENGTH_SHORT).show()

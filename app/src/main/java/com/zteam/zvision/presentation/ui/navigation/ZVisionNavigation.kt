@@ -142,7 +142,8 @@ fun ZVisionNavigation() {
             }
             val viewModel: TranslationOverlayViewModel = hiltViewModel(parentEntry)
             val bitmap = viewModel.getCapturedBitmap()
-            if (bitmap != null) {
+            val rotation = viewModel.getImageRotation()
+            if (bitmap != null && rotation != null) {
                 TranslationOverlayScreen(
                     bitmap = bitmap,
                     onBack = {
@@ -151,7 +152,8 @@ fun ZVisionNavigation() {
                     },
                     fromLanguage = initTranslateFromLanguage,
                     toLanguage = initTranslateToLanguage,
-                    viewModel = viewModel
+                    viewModel = viewModel,
+                    imageRotation = rotation
                 )
             } else {
                 // No bitmap available, go back
@@ -162,7 +164,8 @@ fun ZVisionNavigation() {
         }
 
         composable("language_selection/{isFromLanguage}") { backStackEntry ->
-            val isFromLanguage = backStackEntry.arguments?.getString("isFromLanguage")?.toBoolean() ?: true
+            val isFromLanguage =
+                backStackEntry.arguments?.getString("isFromLanguage")?.toBoolean() ?: true
             LanguageChoosingPage(
                 isFromLanguage = isFromLanguage,
                 currentFromLanguage = initTranslateFromLanguage,

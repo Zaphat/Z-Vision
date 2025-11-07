@@ -2,6 +2,7 @@ package com.zteam.zvision.presentation.viewmodel
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.media.ExifInterface
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -26,6 +27,8 @@ class TranslationOverlayViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
 
+    private var imageRotation: Int? = null
+
     // Hold the captured bitmap
     private var capturedBitmap: Bitmap? = null
 
@@ -39,7 +42,14 @@ class TranslationOverlayViewModel @Inject constructor(
         _textBlocks.value = emptyList()
     }
 
+    fun setImageRotation(rotation: Int) {
+        imageRotation = rotation
+    }
+
+
     fun getCapturedBitmap(): Bitmap? = capturedBitmap
+    fun getImageRotation(): Int? = imageRotation
+
 
     fun clearCapturedBitmap() {
         capturedBitmap?.recycle()

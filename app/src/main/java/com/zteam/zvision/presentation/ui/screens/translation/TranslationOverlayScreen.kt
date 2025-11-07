@@ -11,6 +11,7 @@ import android.provider.MediaStore
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -36,7 +37,10 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.withTranslation
 import androidx.core.graphics.withRotation
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.zteam.zvision.presentation.viewmodel.TranslationOverlayViewModel
+import com.zteam.zvision.utils.getDevicePhysicalOrientation
+import com.zteam.zvision.utils.rememberDevicePhysicalOrientation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -56,7 +60,8 @@ fun TranslationOverlayScreen(
     onBack: () -> Unit,
     fromLanguage: String,
     toLanguage: String,
-    viewModel: TranslationOverlayViewModel = hiltViewModel()
+    viewModel: TranslationOverlayViewModel = hiltViewModel(),
+    imageRotation: Int
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -65,6 +70,8 @@ fun TranslationOverlayScreen(
     val textBlocks by viewModel.textBlocks.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     var isSaving by remember { mutableStateOf(false) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val isLandscape by rememberDevicePhysicalOrientation(lifecycleOwner)
 
     // Process image on first load
     LaunchedEffect(bitmap) {
@@ -79,7 +86,14 @@ fun TranslationOverlayScreen(
                 val result = withContext(Dispatchers.IO) {
                     // Create bitmap with or without translations
                     val finalBitmap = if (showTranslations && textBlocks.isNotEmpty()) {
-                        createBitmapWithTranslations(bitmap, textBlocks)
+                        createBitmapWithTranslations(
+                            context,
+                            bitmap,
+                            textBlocks,
+                            context.resources.displayMetrics.widthPixels.toFloat(),
+                            context.resources.displayMetrics.heightPixels.toFloat(),
+                            isLandscape
+                        )
                     } else {
                         bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false)
                     }
@@ -90,14 +104,16 @@ fun TranslationOverlayScreen(
 
                 withContext(Dispatchers.Main) {
                     if (result) {
-                        Toast.makeText(context, "Image saved to Pictures", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Image saved to Pictures", Toast.LENGTH_SHORT)
+                            .show()
                     } else {
                         Toast.makeText(context, "Failed to save image", Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Error saving image: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Error saving image: ${e.message}", Toast.LENGTH_SHORT)
+                        .show()
                 }
             } finally {
                 isSaving = false
@@ -127,50 +143,48 @@ fun TranslationOverlayScreen(
                 val screenHeight = constraints.maxHeight.toFloat()
                 val imageWidth = bitmap.width.toFloat()
                 val imageHeight = bitmap.height.toFloat()
-                
-                // Determine if image is landscape
-                val isLandscape = imageWidth > imageHeight
-                
+
                 // Calculate scale to fit image in screen (ContentScale.Fit logic)
                 val scale = minOf(screenWidth / imageWidth, screenHeight / imageHeight)
                 val scaledImageWidth = imageWidth * scale
                 val scaledImageHeight = imageHeight * scale
-                
+
                 // Calculate offset to center image
                 val offsetX = (screenWidth - scaledImageWidth) / 2f
                 val offsetY = (screenHeight - scaledImageHeight) / 2f
-                
+
                 textBlocks.forEach { block ->
                     // Scale and position the text block relative to the scaled image
                     val scaledX = (block.x * scale) + offsetX
                     val scaledY = (block.y * scale) + offsetY
                     val scaledWidth = block.width * scale
                     val scaledHeight = block.height * scale
-                    
+
                     Box(
                         modifier = Modifier
-                            .offset(x = (scaledX / density.density).dp, y = (scaledY / density.density).dp)
+                            .offset(
+                                x = (scaledX / density.density).dp,
+                                y = (scaledY / density.density).dp
+                            )
                             .width((scaledWidth / density.density).dp)
                             .height((scaledHeight / density.density).dp)
-                            .then(
-                                // Rotate text boxes 90 degrees for landscape images
-                                if (isLandscape) Modifier.rotate(90f) else Modifier
-                            )
                             .background(Color.White.copy(alpha = 0.9f))
                             .padding(horizontal = 4.dp, vertical = 2.dp)
                     ) {
-                        val fontSize = (12 * scale).coerceAtLeast(8f).coerceAtMost(14f)
+                        val fontSize = (12 * scale).coerceAtLeast(3f).coerceAtMost(12f)
                         Text(
                             text = block.translatedText,
                             color = Color.Black,
                             fontSize = fontSize.sp,
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .then(
+                                    if (isLandscape) Modifier.rotate(90f) else Modifier
+                                )
                                 .wrapContentHeight(),
                             textAlign = TextAlign.Start,
-                            maxLines = 5,
                             overflow = TextOverflow.Ellipsis,
-                            lineHeight = (fontSize * 1.2f).sp
+                            lineHeight = (fontSize * 1.1f).sp
                         )
                     }
                 }
@@ -241,100 +255,104 @@ fun TranslationOverlayScreen(
 /**
  * Create a bitmap with translations overlaid
  */
-private fun createBitmapWithTranslations(originalBitmap: Bitmap, textBlocks: List<TextBlock>): Bitmap {
-    val resultBitmap = originalBitmap.copy(originalBitmap.config ?: Bitmap.Config.ARGB_8888, true)
+private fun createBitmapWithTranslations(
+    context: Context,
+    originalBitmap: Bitmap,
+    textBlocks: List<TextBlock>,
+    screenWidth: Float,
+    screenHeight: Float,
+    isLandscape: Boolean
+): Bitmap {
+    val resultBitmap = originalBitmap.copy(Bitmap.Config.ARGB_8888, true)
     val canvas = Canvas(resultBitmap)
-    
+
     val imageWidth = originalBitmap.width.toFloat()
     val imageHeight = originalBitmap.height.toFloat()
-    val isLandscape = imageWidth > imageHeight
-    
+    // Compute same scale/offset as in Compose (ContentScale.Fit)
+    val scale = minOf(screenWidth / imageWidth, screenHeight / imageHeight)
+    val scaledImageWidth = imageWidth * scale
+    val scaledImageHeight = imageHeight * scale
+    val offsetX = (screenWidth - scaledImageWidth) / 2f
+    val offsetY = (screenHeight - scaledImageHeight) / 2f
+
     val backgroundPaint = Paint().apply {
         color = android.graphics.Color.WHITE
         style = Paint.Style.FILL
         alpha = (0.9f * 255).toInt()
     }
-    
+
     textBlocks.forEach { block ->
         val padding = 8f
-        val boxWidth = block.width - (padding * 2)
-        
-        // Calculate font size based on image size (match UI scaling)
-        val scale = 1.0f // Already in bitmap coordinates
-        val fontSize = (12 * scale).coerceAtLeast(8f).coerceAtMost(14f) * 2.5f // Scale up for bitmap resolution
-        
+
+        // Match scaling and translation from Compose
+        val scaledX = (block.x * scale) + offsetX
+        val scaledY = (block.y * scale) + offsetY
+        val scaledWidth = block.width * scale
+        val scaledHeight = block.height * scale
+
+        val fontSize = (12 * scale).coerceAtLeast(6f).coerceAtMost(12f) * 2.5f
+
         val textPaint = TextPaint().apply {
             color = android.graphics.Color.BLACK
             textSize = fontSize
             isAntiAlias = true
         }
-        
-        // Create StaticLayout for proper text wrapping
+
         val staticLayout = StaticLayout.Builder.obtain(
             block.translatedText,
             0,
             block.translatedText.length,
             textPaint,
-            boxWidth.toInt().coerceAtLeast(1)
+            scaledWidth.toInt().coerceAtLeast(1)
         )
             .setAlignment(Layout.Alignment.ALIGN_NORMAL)
             .setLineSpacing(fontSize * 0.2f, 1.0f)
-            .setMaxLines(5)
             .setEllipsize(android.text.TextUtils.TruncateAt.END)
             .build()
-        
-        // Calculate actual text height needed
+
         val textHeight = staticLayout.height.toFloat()
         val actualBoxHeight = textHeight + (padding * 2)
-        
+
         if (isLandscape) {
-            // For landscape images, rotate the text boxes 90 degrees
+            // Rotate around the center of the text block
+            val centerX = scaledX + scaledWidth / 2f
+            val centerY = scaledY + scaledHeight / 2f
+
             canvas.save()
-            
-            // Calculate rotation center (center of the text block)
-            val centerX = block.x + block.width / 2f
-            val centerY = block.y + block.height / 2f
-            
-            // Rotate canvas around the center of the text block
             canvas.rotate(90f, centerX, centerY)
-            
-            // Calculate new position after rotation
-            val rotatedX = centerX - actualBoxHeight / 2f
-            val rotatedY = centerY - boxWidth / 2f
-            
-            // Draw white background (rotated)
+
+            // Draw background
             canvas.drawRect(
-                rotatedX,
-                rotatedY,
-                rotatedX + actualBoxHeight,
-                rotatedY + boxWidth,
+                centerX - actualBoxHeight / 2f,
+                centerY - scaledWidth / 2f,
+                centerX + actualBoxHeight / 2f,
+                centerY + scaledWidth / 2f,
                 backgroundPaint
             )
-            
-            // Draw text with StaticLayout
-            canvas.withTranslation(rotatedX + padding, rotatedY + padding) {
+
+            // Draw text
+            canvas.withTranslation(
+                centerX - actualBoxHeight / 2f + padding,
+                centerY - scaledWidth / 2f + padding
+            ) {
                 staticLayout.draw(canvas)
             }
-            
+
             canvas.restore()
         } else {
-            // For portrait images, render normally
-            // Draw white background
+            // Portrait or no rotation
             canvas.drawRect(
-                block.x,
-                block.y,
-                block.x + block.width,
-                block.y + actualBoxHeight,
+                scaledX,
+                scaledY,
+                scaledX + scaledWidth,
+                scaledY + actualBoxHeight,
                 backgroundPaint
             )
-            
-            // Draw text with StaticLayout
-            canvas.withTranslation(block.x + padding, block.y + padding) {
+            canvas.withTranslation(scaledX + padding, scaledY + padding) {
                 staticLayout.draw(canvas)
             }
         }
     }
-    
     return resultBitmap
 }
 
@@ -343,27 +361,27 @@ private fun createBitmapWithTranslations(originalBitmap: Bitmap, textBlocks: Lis
  */
 private fun saveBitmapToMediaStore(context: Context, bitmap: Bitmap): Boolean {
     val filename = "translated_${System.currentTimeMillis()}.jpg"
-    
+
     val contentValues = ContentValues().apply {
         put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
         put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
         put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
         put(MediaStore.MediaColumns.IS_PENDING, 1)
     }
-    
+
     val resolver = context.contentResolver
     val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
         ?: return false
-    
+
     return try {
         resolver.openOutputStream(uri)?.use { outputStream ->
             bitmap.compress(Bitmap.CompressFormat.JPEG, 95, outputStream)
         }
-        
+
         contentValues.clear()
         contentValues.put(MediaStore.MediaColumns.IS_PENDING, 0)
         resolver.update(uri, contentValues, null, null)
-        
+
         true
     } catch (e: Exception) {
         resolver.delete(uri, null, null)
