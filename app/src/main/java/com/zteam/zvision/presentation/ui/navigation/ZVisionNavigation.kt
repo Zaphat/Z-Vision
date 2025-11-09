@@ -137,13 +137,12 @@ fun ZVisionNavigation() {
 
         composable("translation_overlay") {
             // Get the parent entry (main screen) to access the same ViewModel instance
-            val parentEntry = remember(navController) {
+            val parentEntry = remember(navController, navController.currentBackStackEntry) {
                 navController.getBackStackEntry("main")
             }
             val viewModel: TranslationOverlayViewModel = hiltViewModel(parentEntry)
             val bitmap = viewModel.getCapturedBitmap()
-            val rotation = viewModel.getImageRotation()
-            if (bitmap != null && rotation != null) {
+            if (bitmap != null) {
                 TranslationOverlayScreen(
                     bitmap = bitmap,
                     onBack = {
@@ -153,7 +152,6 @@ fun ZVisionNavigation() {
                     fromLanguage = initTranslateFromLanguage,
                     toLanguage = initTranslateToLanguage,
                     viewModel = viewModel,
-                    imageRotation = rotation
                 )
             } else {
                 // No bitmap available, go back

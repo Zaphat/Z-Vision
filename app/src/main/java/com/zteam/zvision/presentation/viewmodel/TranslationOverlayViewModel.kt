@@ -1,8 +1,6 @@
 package com.zteam.zvision.presentation.viewmodel
 
-import android.content.Context
 import android.graphics.Bitmap
-import android.media.ExifInterface
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -27,7 +25,6 @@ class TranslationOverlayViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
 
-    private var imageRotation: Int? = null
 
     // Hold the captured bitmap
     private var capturedBitmap: Bitmap? = null
@@ -42,14 +39,7 @@ class TranslationOverlayViewModel @Inject constructor(
         _textBlocks.value = emptyList()
     }
 
-    fun setImageRotation(rotation: Int) {
-        imageRotation = rotation
-    }
-
-
     fun getCapturedBitmap(): Bitmap? = capturedBitmap
-    fun getImageRotation(): Int? = imageRotation
-
 
     fun clearCapturedBitmap() {
         capturedBitmap?.recycle()
@@ -58,7 +48,12 @@ class TranslationOverlayViewModel @Inject constructor(
         _textBlocks.value = emptyList()
     }
 
-    fun processImage(context: Context, bitmap: Bitmap, fromLanguage: String, toLanguage: String) {
+    fun processImage(
+        bitmap: Bitmap,
+        rotationDegrees: Int,
+        fromLanguage: String,
+        toLanguage: String
+    ) {
         // Return cached if available
         if (cachedBlocks != null) {
             _textBlocks.value = cachedBlocks!!
@@ -75,6 +70,7 @@ class TranslationOverlayViewModel @Inject constructor(
                 // Recognize text from bitmap
                 textRecognitionUsecase.fromBitmap(
                     bitmap = bitmap,
+                    rotationDegrees = rotationDegrees,
                     onResult = { visionText ->
                         viewModelScope.launch {
                             val blocks = mutableListOf<TextBlock>()
@@ -86,7 +82,11 @@ class TranslationOverlayViewModel @Inject constructor(
                                     // Translate the text
                                     val originalText = textBlock.text
                                     val translatedText = try {
-                                        translatorUsecase.translateText(originalText, fromIso, toIso)
+                                        translatorUsecase.translateText(
+                                            originalText,
+                                            fromIso,
+                                            toIso
+                                        )
                                     } catch (e: Exception) {
                                         Log.e("TranslationOverlay", "Translation failed", e)
                                         originalText // Fallback to original

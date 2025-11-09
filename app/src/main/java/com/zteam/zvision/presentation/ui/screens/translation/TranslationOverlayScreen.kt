@@ -3,13 +3,8 @@ package com.zteam.zvision.presentation.ui.screens.translation
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
 import android.os.Environment
 import android.provider.MediaStore
-import android.text.Layout
-import android.text.StaticLayout
-import android.text.TextPaint
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -17,16 +12,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -36,11 +32,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.graphics.withTranslation
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.zteam.zvision.presentation.viewmodel.TranslationOverlayViewModel
-import com.zteam.zvision.utils.rememberDevicePhysicalOrientation
+import com.zteam.zvision.utils.getDevicePhysicalOrientation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -61,7 +55,6 @@ fun TranslationOverlayScreen(
     fromLanguage: String,
     toLanguage: String,
     viewModel: TranslationOverlayViewModel = hiltViewModel(),
-    imageRotation: Int
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -70,15 +63,16 @@ fun TranslationOverlayScreen(
     val textBlocks by viewModel.textBlocks.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     var isSaving by remember { mutableStateOf(false) }
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val isLandscape by rememberDevicePhysicalOrientation(lifecycleOwner)
-    
+    var isLandscape by remember { mutableStateOf(false) }
     // Graphics layer to capture the image + translations Box
     val graphicsLayer = rememberGraphicsLayer()
 
     // Process image on first load
     LaunchedEffect(bitmap) {
-        viewModel.processImage(context, bitmap, fromLanguage, toLanguage)
+        getDevicePhysicalOrientation(context) { degree ->
+            viewModel.processImage(bitmap, 0, fromLanguage, toLanguage)
+            isLandscape = degree == 90 || degree == 270
+        }
     }
 
     // Function to save image to Pictures
@@ -93,7 +87,7 @@ fun TranslationOverlayScreen(
                 } else {
                     bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false)
                 }
-                
+
                 val result = withContext(Dispatchers.IO) {
                     // Save to gallery
                     saveBitmapToMediaStore(context, finalBitmap)
@@ -122,6 +116,7 @@ fun TranslationOverlayScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .safeDrawingPadding()
     ) {
         // Box for image + translations that we'll capture
         Box(
@@ -160,49 +155,52 @@ fun TranslationOverlayScreen(
                     val scaledImageWidth = imageWidth * scale
                     val scaledImageHeight = imageHeight * scale
 
-                // Calculate offset to center image
-                val offsetX = (screenWidth - scaledImageWidth) / 2f
-                val offsetY = (screenHeight - scaledImageHeight) / 2f
+                    // Calculate offset to center image
+                    val offsetX = (screenWidth - scaledImageWidth) / 2f
+                    val offsetY = (screenHeight - scaledImageHeight) / 2f
 
-                textBlocks.forEach { block ->
-                    // Scale and position the text block relative to the scaled image
-                    val scaledX = (block.x * scale) + offsetX
-                    val scaledY = (block.y * scale) + offsetY
-                    val scaledWidth = block.width * scale
-                    val scaledHeight = block.height * scale
+                    val fontSize = (12 * scale * 0.85f).coerceAtLeast(4f).coerceAtMost(12f)
 
-                    Box(
-                        modifier = Modifier
-                            .offset(
-                                x = (scaledX / density.density).dp,
-                                y = (scaledY / density.density).dp
-                            )
-                            .width((scaledWidth / density.density).dp)
-                            .height((scaledHeight / density.density).dp)
-                            .background(Color.White.copy(alpha = 0.9f))
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
-                    ) {
-                        val fontSize = (12 * scale).coerceAtLeast(3f).coerceAtMost(12f)
-                        Text(
-                            text = block.translatedText,
-                            color = Color.Black,
-                            fontSize = fontSize.sp,
+                    textBlocks.forEach { block ->
+                        // Scale and position the text block relative to the scaled image
+                        val scaledX = ((block.x * scale) + offsetX) / density.density
+                        val scaledY = ((block.y * scale) + offsetY) / density.density
+                        val scaledWidth = (block.width * scale) / density.density
+                        val scaledHeight = (block.height * scale) / density.density
+
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .then(
-                                    if (isLandscape) Modifier.rotate(90f) else Modifier
+                                .offset(
+                                    x = if (!isLandscape) scaledX.dp else (scaledX + scaledWidth).dp,
+                                    y = scaledY.dp
                                 )
-                                .wrapContentHeight(),
-                            textAlign = TextAlign.Start,
-                            overflow = TextOverflow.Ellipsis,
-                            lineHeight = (fontSize * 1.1f).sp
-                        )
+                                .width(if (!isLandscape) scaledWidth.dp else scaledHeight.dp)
+                                .height(if (!isLandscape) scaledHeight.dp else scaledWidth.dp)
+                                .graphicsLayer {
+                                    if (isLandscape) {
+                                        rotationZ = 90f
+                                        transformOrigin =
+                                            TransformOrigin(0f, 0f) // rotate from top-left
+                                    }
+                                }
+                                .background(Color.White.copy(alpha = 0.9f))
+                                .padding(4.dp)
+                        ) {
+                            Text(
+                                text = block.translatedText,
+                                color = Color.Black,
+                                fontSize = fontSize.sp,
+                                lineHeight = (fontSize * 1.1f).sp,
+                                textAlign = TextAlign.Start,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                     }
                 }
             }
-        }
-        
-        // End of capturable Box
+
+            // End of capturable Box
         }
 
         // Loading indicator (outside the captured Box)
@@ -244,7 +242,7 @@ fun TranslationOverlayScreen(
                 )
             } else {
                 Icon(
-                    imageVector = Icons.Default.KeyboardArrowDown,
+                    imageVector = Icons.Default.Download,
                     contentDescription = "Save to gallery",
                     tint = Color.Black
                 )
@@ -269,106 +267,104 @@ fun TranslationOverlayScreen(
 /**
  * Create a bitmap with translations overlaid
  */
-private fun createBitmapWithTranslations(
-    context: Context,
-    originalBitmap: Bitmap,
-    textBlocks: List<TextBlock>,
-    screenWidth: Float,
-    screenHeight: Float,
-    isLandscape: Boolean
-): Bitmap {
-    val resultBitmap = originalBitmap.copy(Bitmap.Config.ARGB_8888, true)
-    val canvas = Canvas(resultBitmap)
-
-    val imageWidth = originalBitmap.width.toFloat()
-    val imageHeight = originalBitmap.height.toFloat()
-    // Compute same scale/offset as in Compose (ContentScale.Fit)
-    val scale = minOf(screenWidth / imageWidth, screenHeight / imageHeight)
-    val scaledImageWidth = imageWidth * scale
-    val scaledImageHeight = imageHeight * scale
-    val offsetX = (screenWidth - scaledImageWidth) / 2f
-    val offsetY = (screenHeight - scaledImageHeight) / 2f
-
-    val backgroundPaint = Paint().apply {
-        color = android.graphics.Color.WHITE
-        style = Paint.Style.FILL
-        alpha = (0.9f * 255).toInt()
-    }
-
-    textBlocks.forEach { block ->
-        val padding = 8f
-
-        // Match scaling and translation from Compose
-        val scaledX = (block.x * scale) + offsetX
-        val scaledY = (block.y * scale) + offsetY
-        val scaledWidth = block.width * scale
-        val scaledHeight = block.height * scale
-
-        val fontSize = (12 * scale).coerceAtLeast(6f).coerceAtMost(12f) * 2.5f
-
-        val textPaint = TextPaint().apply {
-            color = android.graphics.Color.BLACK
-            textSize = fontSize
-            isAntiAlias = true
-        }
-
-        val staticLayout = StaticLayout.Builder.obtain(
-            block.translatedText,
-            0,
-            block.translatedText.length,
-            textPaint,
-            scaledWidth.toInt().coerceAtLeast(1)
-        )
-            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-            .setLineSpacing(fontSize * 0.2f, 1.0f)
-            .setEllipsize(android.text.TextUtils.TruncateAt.END)
-            .build()
-
-        val textHeight = staticLayout.height.toFloat()
-        val actualBoxHeight = textHeight + (padding * 2)
-
-        if (isLandscape) {
-            // Rotate around the center of the text block
-            val centerX = scaledX + scaledWidth / 2f
-            val centerY = scaledY + scaledHeight / 2f
-
-            canvas.save()
-            canvas.rotate(90f, centerX, centerY)
-
-            // Draw background
-            canvas.drawRect(
-                centerX - actualBoxHeight / 2f,
-                centerY - scaledWidth / 2f,
-                centerX + actualBoxHeight / 2f,
-                centerY + scaledWidth / 2f,
-                backgroundPaint
-            )
-
-            // Draw text
-            canvas.withTranslation(
-                centerX - actualBoxHeight / 2f + padding,
-                centerY - scaledWidth / 2f + padding
-            ) {
-                staticLayout.draw(canvas)
-            }
-
-            canvas.restore()
-        } else {
-            // Portrait or no rotation
-            canvas.drawRect(
-                scaledX,
-                scaledY,
-                scaledX + scaledWidth,
-                scaledY + actualBoxHeight,
-                backgroundPaint
-            )
-            canvas.withTranslation(scaledX + padding, scaledY + padding) {
-                staticLayout.draw(canvas)
-            }
-        }
-    }
-    return resultBitmap
-}
+//private fun createBitmapWithTranslations(
+//    context: Context,
+//    originalBitmap: Bitmap,
+//    textBlocks: List<TextBlock>,
+//    screenWidth: Float,
+//    screenHeight: Float,
+//    isLandscape: Boolean
+//): Bitmap {
+//    val resultBitmap = originalBitmap.copy(Bitmap.Config.ARGB_8888, true)
+//    val canvas = Canvas(resultBitmap)
+//
+//    val imageWidth = originalBitmap.width.toFloat()
+//    val imageHeight = originalBitmap.height.toFloat()
+//    // Compute same scale/offset as in Compose (ContentScale.Fit)
+//    val scale = minOf(screenWidth / imageWidth, screenHeight / imageHeight)
+//    val scaledImageWidth = imageWidth * scale
+//    val scaledImageHeight = imageHeight * scale
+//    val offsetX = (screenWidth - scaledImageWidth) / 2f
+//    val offsetY = (screenHeight - scaledImageHeight) / 2f
+//
+//    val backgroundPaint = Paint().apply {
+//        color = android.graphics.Color.WHITE
+//        style = Paint.Style.FILL
+//        alpha = (0.9f * 255).toInt()
+//    }
+//
+//    textBlocks.forEach { block ->
+//        val padding = 8f
+//
+//        // Match scaling and translation from Compose
+//        val scaledX = (block.x * scale) + offsetX
+//        val scaledY = (block.y * scale) + offsetY
+//        val scaledWidth = block.width * scale
+//        val scaledHeight = block.height * scale
+//
+//        val fontSize = (12 * scale).coerceAtLeast(6f).coerceAtMost(12f) * 2.5f
+//
+//        val textPaint = TextPaint().apply {
+//            color = android.graphics.Color.BLACK
+//            textSize = fontSize
+//            isAntiAlias = true
+//        }
+//
+//        val staticLayout = StaticLayout.Builder.obtain(
+//            block.translatedText,
+//            0,
+//            block.translatedText.length,
+//            textPaint,
+//            scaledWidth.toInt().coerceAtLeast(1)
+//        )
+//            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+//            .setLineSpacing(fontSize * 0.2f, 1.0f)
+//            .setEllipsize(android.text.TextUtils.TruncateAt.END)
+//            .build()
+//
+//        val textHeight = staticLayout.height.toFloat()
+//        val actualBoxHeight = textHeight + (padding * 2)
+//
+//        if (isLandscape) {
+//            // Rotate around the center of the text block
+//            val centerX = scaledX + scaledWidth / 2f
+//            val centerY = scaledY + scaledHeight / 2f
+//
+//            canvas.withRotation(90f, centerX, centerY) {
+//                // Draw background
+//                drawRect(
+//                    centerX - actualBoxHeight / 2f,
+//                    centerY - scaledWidth / 2f,
+//                    centerX + actualBoxHeight / 2f,
+//                    centerY + scaledWidth / 2f,
+//                    backgroundPaint
+//                )
+//
+//                // Draw text
+//                withTranslation(
+//                    centerX - actualBoxHeight / 2f + padding,
+//                    centerY - scaledWidth / 2f + padding
+//                ) {
+//                    staticLayout.draw(this)
+//                }
+//
+//            }
+//        } else {
+//            // Portrait or no rotation
+//            canvas.drawRect(
+//                scaledX,
+//                scaledY,
+//                scaledX + scaledWidth,
+//                scaledY + actualBoxHeight,
+//                backgroundPaint
+//            )
+//            canvas.withTranslation(scaledX + padding, scaledY + padding) {
+//                staticLayout.draw(canvas)
+//            }
+//        }
+//    }
+//    return resultBitmap
+//}
 
 /**
  * Save bitmap to MediaStore (Pictures directory)

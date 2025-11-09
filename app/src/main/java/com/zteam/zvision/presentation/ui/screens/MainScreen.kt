@@ -227,8 +227,6 @@ fun MainScreen(
                                 ExifInterface.ORIENTATION_NORMAL
                             )
 
-                            translationOverlayViewModel.setImageRotation(orientation)
-
                             val matrix = Matrix()
                             when (orientation) {
                                 ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)

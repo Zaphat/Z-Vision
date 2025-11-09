@@ -22,10 +22,11 @@ class TextRecognitionUsecase @Inject constructor(
 
     fun fromBitmap(
         bitmap: Bitmap,
+        rotationDegrees: Int = 0,
         onResult: (Text) -> Unit,
         onError: (Exception) -> Unit
     ) {
-        val inputImage = InputImage.fromBitmap(bitmap, 0)
+        val inputImage = InputImage.fromBitmap(bitmap, rotationDegrees)
         processInputImage(inputImage, onResult, onError)
     }
 

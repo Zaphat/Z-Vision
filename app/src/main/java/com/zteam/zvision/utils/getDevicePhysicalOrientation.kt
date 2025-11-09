@@ -6,15 +6,15 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.*
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlin.math.atan2
 
-fun getDevicePhysicalOrientation(context: Context, callback: (isLandscape: Boolean) -> Unit) {
+fun getDevicePhysicalOrientation(context: Context, callback: (degree: Int) -> Unit) {
     val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
@@ -23,8 +23,19 @@ fun getDevicePhysicalOrientation(context: Context, callback: (isLandscape: Boole
             val x = event.values[0]
             val y = event.values[1]
 
-            val isLandscape = kotlin.math.abs(x) > kotlin.math.abs(y)
-            callback(isLandscape)
+            val angle = Math.toDegrees(atan2(-x.toDouble(), y.toDouble()))  // note -x
+            val normalizedAngle = ((angle + 360) % 360).toInt()  // 0..359
+
+            val degree = when (normalizedAngle) {
+                in 0..45 -> 0
+                in 45..135 -> 90
+                in 135..225 -> 180
+                in 225..315 -> 270
+                in 315..360  -> 0
+                else -> 0
+            }
+
+            callback(degree)
 
             // Clean up
             sensorManager.unregisterListener(this)
@@ -41,7 +52,7 @@ fun rememberDevicePhysicalOrientation(lifecycleOwner: LifecycleOwner = LocalLife
     val context = LocalContext.current
     val isLandscape = remember { mutableStateOf(false) }
 
-    DisposableEffect (lifecycleOwner) {
+    DisposableEffect(lifecycleOwner) {
         val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
 
