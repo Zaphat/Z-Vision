@@ -2,9 +2,7 @@ package com.zteam.zvision.presentation.ui.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.MaterialTheme
@@ -19,7 +17,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
@@ -31,6 +29,7 @@ import com.zteam.zvision.presentation.ui.theme.LocalThemeController
 import com.zteam.zvision.presentation.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 val menuItems = listOf(
         "Option 1" to { println("Option 1 clicked") },
@@ -67,10 +66,16 @@ fun SettingsDrawer(
                 // Keep drawer content LTR so items render normally
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
                     ModalDrawerSheet(
-                        modifier = Modifier.fillMaxWidth(0.65f),
-                        drawerShape = RectangleShape
+                        modifier = Modifier
+                            .fillMaxWidth(0.65f)
+                            .padding(top = 110.dp, bottom = 210.dp), // Add top and bottom cutout
+                        drawerShape = RoundedCornerShape(
+                            topStart = 24.dp,
+                            topEnd = 0.dp,
+                            bottomEnd = 0.dp,
+                            bottomStart = 24.dp
+                        )
                     ) {
-                        Spacer(modifier = Modifier.height(12.dp))
                         // Appearance section: Dark mode toggle
                         Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)) {
                             Text(
@@ -86,7 +91,7 @@ fun SettingsDrawer(
                             ) {
                                 Text(
                                     text = "Dark mode",
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f).padding(start = 8.dp)
                                 )
                                 Switch(
                                     checked = themeController.mode == ThemeMode.Dark,
@@ -109,18 +114,6 @@ fun SettingsDrawer(
                                 scope.launch { drawerState.close() }
                             }
                         )
-
-                        // Existing menu items
-                        menuItems.forEach { (title, action) ->
-                            NavigationDrawerItem(
-                                label = { Text(title) },
-                                selected = false,
-                                onClick = {
-                                    action()
-                                    scope.launch { drawerState.close() }
-                                }
-                            )
-                        }
                     }
                 }
             },
