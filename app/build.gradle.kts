@@ -88,6 +88,8 @@ dependencies {
     implementation(libs.mlkit.translate)
     implementation(libs.mlkit.language.id)
     implementation(libs.ui.graphics)
+    implementation(libs.text.recognition)
+    implementation(libs.translate)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.hilt.android)

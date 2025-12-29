@@ -20,6 +20,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.zteam.zvision.appDataStore
 import com.zteam.zvision.presentation.ui.screens.MainScreen
 import com.zteam.zvision.presentation.ui.screens.browser.InAppBrowserScreen
@@ -27,6 +28,8 @@ import com.zteam.zvision.presentation.ui.screens.language.LanguageChoosingPage
 import com.zteam.zvision.presentation.ui.screens.language.ManageLanguagesScreen
 import com.zteam.zvision.presentation.ui.screens.qr_create_store.QrCreationScreen
 import com.zteam.zvision.presentation.ui.screens.qr_create_store.QrStorageScreen
+import com.zteam.zvision.presentation.ui.screens.translation.TranslationOverlayScreen
+import com.zteam.zvision.presentation.viewmodel.TranslationOverlayViewModel
 import kotlinx.coroutines.flow.first
 
 private val KEY_SELECTING_MODE = stringPreferencesKey("selecting_mode")
@@ -123,7 +126,8 @@ fun ZVisionNavigation() {
                     navigationHelper.navigateToQrStorage()
                 },
                 onOpenUrl = openInAppBrowser,
-                scanningEnabled = !browserOpen
+                scanningEnabled = !browserOpen,
+                navController = navController
             )
         }
 
@@ -131,8 +135,35 @@ fun ZVisionNavigation() {
             ManageLanguagesScreen(onBack = { navigationHelper.safePopBack() })
         }
 
+        composable("translation_overlay") {
+            // Get the parent entry (main screen) to access the same ViewModel instance
+            val parentEntry = remember(navController, navController.currentBackStackEntry) {
+                navController.getBackStackEntry("main")
+            }
+            val viewModel: TranslationOverlayViewModel = hiltViewModel(parentEntry)
+            val bitmap = viewModel.getCapturedBitmap()
+            if (bitmap != null) {
+                TranslationOverlayScreen(
+                    bitmap = bitmap,
+                    onBack = {
+                        viewModel.clearCapturedBitmap()
+                        navigationHelper.safePopBack()
+                    },
+                    fromLanguage = initTranslateFromLanguage,
+                    toLanguage = initTranslateToLanguage,
+                    viewModel = viewModel,
+                )
+            } else {
+                // No bitmap available, go back
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    navigationHelper.safePopBack()
+                }
+            }
+        }
+
         composable("language_selection/{isFromLanguage}") { backStackEntry ->
-            val isFromLanguage = backStackEntry.arguments?.getString("isFromLanguage")?.toBoolean() ?: true
+            val isFromLanguage =
+                backStackEntry.arguments?.getString("isFromLanguage")?.toBoolean() ?: true
             LanguageChoosingPage(
                 isFromLanguage = isFromLanguage,
                 currentFromLanguage = initTranslateFromLanguage,

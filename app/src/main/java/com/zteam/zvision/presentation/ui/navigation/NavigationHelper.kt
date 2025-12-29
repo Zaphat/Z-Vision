@@ -50,4 +50,8 @@ class NavigationHelper(
     fun navigateToManageLanguagePackages() {
         safeNavigate("manage_languages")
     }
+    
+    fun navigateToTranslationOverlay() {
+        safeNavigate("translation_overlay")
+    }
 }
